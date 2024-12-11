@@ -8,7 +8,7 @@ public class Main {
             StringBuilder fullInput = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) {
-                fullInput.append(line).append(" ");
+                fullInput.append(line).append("\n");
             }
 
             // DEBUG: Print the full input read from the file
@@ -16,19 +16,20 @@ public class Main {
             System.out.println(fullInput.toString());
             System.out.println("-------------------------");
 
-            String[] statements = fullInput.toString().split(";");
-            
+            // Split statements while respecting braces
+            List<String> statements = splitStatements(fullInput.toString());
+
             // DEBUG: Print the statements
             System.out.println("----DEBUG: STATEMENTS----");
-            for (int i = 0; i < statements.length; i++) {
-                System.out.println("Statement " + i + ": " + statements[i].trim());
+            for (int i = 0; i < statements.size(); i++) {
+                System.out.println("Statement " + i + ": " + statements.get(i).trim());
             }
             System.out.println("-------------------------");
 
             Interpreter interpreter = new Interpreter();
 
-            for (int i = 0; i < statements.length; i++) {
-                String stmt = statements[i].trim();
+            for (int i = 0; i < statements.size(); i++) {
+                String stmt = statements.get(i).trim();
                 if (stmt.isEmpty()) continue;
                 try {
                     // Tokenize
@@ -72,6 +73,30 @@ public class Main {
         }
     }
 
+    /**
+     * Splits the input into statements by ';' while ignoring ';' within braces.
+     */
+    private static List<String> splitStatements(String input) {
+        List<String> statements = new ArrayList<>();
+        int braceCount = 0;
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '{') braceCount++;
+            if (c == '}') braceCount--;
+            if (c == ';' && braceCount == 0) {
+                statements.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        if (current.length() > 0) {
+            statements.add(current.toString());
+        }
+        return statements;
+    }
+
     // Recursive debug printing of the AST node structure
     public static void debugPrintNode(Node node, int indent) {
         if (node == null) {
@@ -81,52 +106,65 @@ public class Main {
         }
 
         if (node instanceof BinaryNode) {
-            BinaryNode bn = (BinaryNode)node;
+            BinaryNode bn = (BinaryNode) node;
             printIndent(indent);
             System.out.println("BinaryNode: " + bn.op);
-            debugPrintNode(bn.left, indent+2);
-            debugPrintNode(bn.right, indent+2);
+            debugPrintNode(bn.left, indent + 2);
+            debugPrintNode(bn.right, indent + 2);
         } else if (node instanceof UnaryNode) {
-            UnaryNode un = (UnaryNode)node;
+            UnaryNode un = (UnaryNode) node;
             printIndent(indent);
             System.out.println("UnaryNode: " + un.op + " (postfix=" + un.postfix + ")");
-            debugPrintNode(un.expr, indent+2);
+            debugPrintNode(un.expr, indent + 2);
         } else if (node instanceof LiteralNode) {
-            LiteralNode ln = (LiteralNode)node;
+            LiteralNode ln = (LiteralNode) node;
             printIndent(indent);
             System.out.println("LiteralNode: " + ln.value);
         } else if (node instanceof VariableNode) {
-            VariableNode vn = (VariableNode)node;
+            VariableNode vn = (VariableNode) node;
             printIndent(indent);
             System.out.println("VariableNode: " + vn.name);
         } else if (node instanceof AssignNode) {
-            AssignNode an = (AssignNode)node;
+            AssignNode an = (AssignNode) node;
             printIndent(indent);
             System.out.println("AssignNode: " + an.name + " " + an.op);
-            debugPrintNode(an.value, indent+2);
+            debugPrintNode(an.value, indent + 2);
         } else if (node instanceof PrintNode) {
-            PrintNode pn = (PrintNode)node;
+            PrintNode pn = (PrintNode) node;
             printIndent(indent);
             System.out.println("PrintNode");
-            debugPrintNode(pn.expr, indent+2);
+            debugPrintNode(pn.expr, indent + 2);
         } else if (node instanceof IfNode) {
-            IfNode ifn = (IfNode)node;
+            IfNode ifn = (IfNode) node;
             printIndent(indent);
             System.out.println("IfNode");
-            printIndent(indent+2);
+            printIndent(indent + 2);
             System.out.println("Condition:");
-            debugPrintNode(ifn.condition, indent+4);
-            printIndent(indent+2);
+            debugPrintNode(ifn.condition, indent + 4);
+            printIndent(indent + 2);
             System.out.println("IfBranch:");
-            debugPrintNode(ifn.ifBranch, indent+4);
-            printIndent(indent+2);
+            debugPrintNode(ifn.ifBranch, indent + 4);
+            printIndent(indent + 2);
             System.out.println("ElseBranch:");
-            debugPrintNode(ifn.elseBranch, indent+4);
+            debugPrintNode(ifn.elseBranch, indent + 4);
+        } else if (node instanceof LoopNode) {
+            LoopNode ln = (LoopNode) node;
+            printIndent(indent);
+            System.out.println("LoopNode: Loop from");
+            debugPrintNode(ln.start, indent + 2);
+            printIndent(indent + 2);
+            System.out.println("To:");
+            debugPrintNode(ln.end, indent + 4);
+            printIndent(indent + 2);
+            System.out.println("Body:");
+            for (Node stmt : ln.body) {
+                debugPrintNode(stmt, indent + 4);
+            }
         } else if (node instanceof ExpressionStatement) {
-            ExpressionStatement es = (ExpressionStatement)node;
+            ExpressionStatement es = (ExpressionStatement) node;
             printIndent(indent);
             System.out.println("ExpressionStatement:");
-            debugPrintNode(es.expr, indent+2);
+            debugPrintNode(es.expr, indent + 2);
         } else {
             printIndent(indent);
             System.out.println("Unknown Node Type: " + node.getClass().getName());

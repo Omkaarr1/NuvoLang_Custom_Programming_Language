@@ -111,6 +111,12 @@ class Lexer {
                         tokens.add(new Token(TokenType.OR_OR, "||"));
                     }
                     break;
+                case '{':
+                    tokens.add(new Token(TokenType.LBRACE, "{"));
+                    break;
+                case '}':
+                    tokens.add(new Token(TokenType.RBRACE, "}"));
+                    break;
                 case '(':
                     tokens.add(new Token(TokenType.LPAREN, "("));
                     break;
@@ -150,10 +156,20 @@ class Lexer {
             sb.append(advance());
         }
         String word = sb.toString();
-        if (word.equals("print")) return new Token(TokenType.PRINT, word);
-        if (word.equals("if")) return new Token(TokenType.IF, word);
-        if (word.equals("else")) return new Token(TokenType.ELSE, word);
-        return new Token(TokenType.IDENTIFIER, word);
+        switch (word) {
+            case "print":
+                return new Token(TokenType.PRINT, word);
+            case "if":
+                return new Token(TokenType.IF, word);
+            case "else":
+                return new Token(TokenType.ELSE, word);
+            case "loop":
+                return new Token(TokenType.LOOP, word);
+            case "to":
+                return new Token(TokenType.TO, word);
+            default:
+                return new Token(TokenType.IDENTIFIER, word);
+        }
     }
 
     private String readString() {

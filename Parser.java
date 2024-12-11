@@ -1,6 +1,8 @@
 import java.util.*;
 
 abstract class Node {}
+
+// Existing Node types
 class BinaryNode extends Node {
     Node left, right;
     TokenType op;
@@ -8,6 +10,7 @@ class BinaryNode extends Node {
         this.left = left; this.op = op; this.right = right;
     }
 }
+
 class UnaryNode extends Node {
     TokenType op;
     Node expr;
@@ -16,14 +19,17 @@ class UnaryNode extends Node {
         this.op = op; this.expr = expr; this.postfix = postfix;
     }
 }
+
 class LiteralNode extends Node {
     Object value;
     LiteralNode(Object value) { this.value = value; }
 }
+
 class VariableNode extends Node {
     String name;
     VariableNode(String name) { this.name = name; }
 }
+
 class AssignNode extends Node {
     String name;
     TokenType op;
@@ -32,10 +38,12 @@ class AssignNode extends Node {
         this.name = name; this.op = op; this.value = value;
     }
 }
+
 class PrintNode extends Node {
     Node expr;
     PrintNode(Node expr) { this.expr = expr; }
 }
+
 class IfNode extends Node {
     Node condition;
     Node ifBranch;
@@ -46,9 +54,22 @@ class IfNode extends Node {
         this.elseBranch = elseBranch;
     }
 }
+
 class ExpressionStatement extends Node {
     Node expr;
     ExpressionStatement(Node expr) { this.expr = expr; }
+}
+
+// New Node type for loops
+class LoopNode extends Node {
+    Node start;
+    Node end;
+    List<Node> body;
+    LoopNode(Node start, Node end, List<Node> body) {
+        this.start = start;
+        this.end = end;
+        this.body = body;
+    }
 }
 
 class Parser {
@@ -88,6 +109,10 @@ class Parser {
     }
 
     public Node parseStatement() {
+        if (match(TokenType.LOOP)) {
+            return parseLoop();
+        }
+
         if (match(TokenType.IF)) {
             consume(TokenType.LPAREN, "Expect '(' after if.");
             Node cond = parseExpression();
@@ -108,6 +133,26 @@ class Parser {
 
         Node expr = parseExpression();
         return new ExpressionStatement(expr);
+    }
+
+    private Node parseLoop() {
+        // Syntax: loop <start> to <end> { <body> }
+        Node start = parseExpression();
+        consume(TokenType.TO, "Expect 'to' in loop declaration.");
+        Node end = parseExpression();
+        consume(TokenType.LBRACE, "Expect '{' to start loop body.");
+        List<Node> body = parseBlock();
+        return new LoopNode(start, end, body);
+    }
+
+    private List<Node> parseBlock() {
+        List<Node> statements = new ArrayList<>();
+        while (!isAtEnd() && !match(TokenType.RBRACE)) {
+            statements.add(parseStatement());
+            // Optionally consume semicolons if they are part of the language
+            // but in this implementation, semicolons are handled in Main.java
+        }
+        return statements;
     }
 
     private Node parseExpression() { return parseAssignment(); }

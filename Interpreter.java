@@ -15,9 +15,26 @@ class Interpreter {
             } else if (ifNode.elseBranch != null) {
                 execute(ifNode.elseBranch);
             }
+        } else if (node instanceof LoopNode) {
+            LoopNode loop = (LoopNode) node;
+            Object startObj = evaluate(loop.start);
+            Object endObj = evaluate(loop.end);
+            int start = toInteger(startObj);
+            int end = toInteger(endObj);
+            for (int i = start; i <= end; i++) {
+                // Optionally, set a loop variable (e.g., i)
+                // For simplicity, not adding loop index variable
+                executeBlock(loop.body);
+            }
         } else if (node instanceof ExpressionStatement) {
             // Evaluate the expression statement, which may include assignments.
             evaluate(((ExpressionStatement) node).expr);
+        }
+    }
+
+    private void executeBlock(List<Node> statements) {
+        for (Node stmt : statements) {
+            execute(stmt);
         }
     }
 
@@ -31,11 +48,16 @@ class Interpreter {
 
     private TokenType operatorFromCompound(TokenType type) {
         switch (type) {
-            case PLUS_EQ: return TokenType.PLUS;
-            case MINUS_EQ: return TokenType.MINUS;
-            case STAR_EQ: return TokenType.STAR;
-            case SLASH_EQ: return TokenType.SLASH;
-            default: throw new RuntimeException("Unsupported compound assignment operator: " + type);
+            case PLUS_EQ:
+                return TokenType.PLUS;
+            case MINUS_EQ:
+                return TokenType.MINUS;
+            case STAR_EQ:
+                return TokenType.STAR;
+            case SLASH_EQ:
+                return TokenType.SLASH;
+            default:
+                throw new RuntimeException("Unsupported compound assignment operator: " + type);
         }
     }
 
@@ -115,16 +137,29 @@ class Interpreter {
                     return !isTrue(val);
                 }
             }
+        } else if (node instanceof LoopNode) {
+            LoopNode loop = (LoopNode) node;
+            Object startObj = evaluate(loop.start);
+            Object endObj = evaluate(loop.end);
+            int start = toInteger(startObj);
+            int end = toInteger(endObj);
+            for (int i = start; i <= end; i++) {
+                executeBlock(loop.body);
+            }
         }
-        return null;
+
+        throw new RuntimeException("Unknown node type: " + node.getClass().getName());
     }
 
     private Object applyUnary(Object val, TokenType op) {
         double num = toNumber(val);
         switch (op) {
-            case PLUS_PLUS: return num + 1;
-            case MINUS_MINUS: return num - 1;
-            default: throw new RuntimeException("Unsupported unary operator");
+            case PLUS_PLUS:
+                return num + 1;
+            case MINUS_MINUS:
+                return num - 1;
+            default:
+                throw new RuntimeException("Unsupported unary operator");
         }
     }
 
@@ -137,17 +172,20 @@ class Interpreter {
         double r = toNumber(right);
 
         switch (op) {
-            case PLUS: return isInteger(l) && isInteger(r) ? (int)(l+r) : (l+r);
-            case MINUS: return isInteger(l) && isInteger(r) ? (int)(l-r) : (l-r);
-            case STAR: return isInteger(l) && isInteger(r) ? (int)(l*r) : (l*r);
-            case SLASH: 
+            case PLUS:
+                return isInteger(l) && isInteger(r) ? (int) (l + r) : (l + r);
+            case MINUS:
+                return isInteger(l) && isInteger(r) ? (int) (l - r) : (l - r);
+            case STAR:
+                return isInteger(l) && isInteger(r) ? (int) (l * r) : (l * r);
+            case SLASH:
                 if (r == 0) {
                     System.err.println("----DEBUG ERROR----");
                     System.err.println("Division by zero");
                     System.err.println("------------------");
                     throw new RuntimeException("Division by zero");
                 }
-                return isInteger(l) && isInteger(r) ? (int)(l/r) : (l/r);
+                return isInteger(l) && isInteger(r) ? (int) (l / r) : (l / r);
             case MOD:
                 if (r == 0) {
                     System.err.println("----DEBUG ERROR----");
@@ -155,15 +193,23 @@ class Interpreter {
                     System.err.println("------------------");
                     throw new RuntimeException("Division by zero");
                 }
-                return (int)l % (int)r;
-            case EQ_EQ: return equalsValue(l, r);
-            case NOT_EQ: return !equalsValue(l, r);
-            case GT: return l > r;
-            case LT: return l < r;
-            case GT_EQ: return l >= r;
-            case LT_EQ: return l <= r;
-            case AND_AND: return isTrue(l) && isTrue(r);
-            case OR_OR: return isTrue(l) || isTrue(r);
+                return (int) l % (int) r;
+            case EQ_EQ:
+                return equalsValue(l, r);
+            case NOT_EQ:
+                return !equalsValue(l, r);
+            case GT:
+                return l > r;
+            case LT:
+                return l < r;
+            case GT_EQ:
+                return l >= r;
+            case LT_EQ:
+                return l <= r;
+            case AND_AND:
+                return isTrue(left) && isTrue(right);
+            case OR_OR:
+                return isTrue(left) || isTrue(right);
             default:
                 System.err.println("----DEBUG ERROR----");
                 System.err.println("Unsupported operator: " + op);
@@ -173,9 +219,12 @@ class Interpreter {
     }
 
     private boolean isTrue(Object val) {
-        if (val instanceof Boolean) return (Boolean) val;
-        if (val instanceof Number) return ((Number)val).doubleValue() != 0;
-        if (val instanceof String) return ((String) val).length() > 0;
+        if (val instanceof Boolean)
+            return (Boolean) val;
+        if (val instanceof Number)
+            return ((Number) val).doubleValue() != 0;
+        if (val instanceof String)
+            return ((String) val).length() > 0;
         return val != null;
     }
 
@@ -184,15 +233,34 @@ class Interpreter {
     }
 
     private double toNumber(Object val) {
-        if (val instanceof Number) return ((Number)val).doubleValue();
+        if (val instanceof Number)
+            return ((Number) val).doubleValue();
         if (val instanceof String) {
             try {
-                return Double.parseDouble((String)val);
+                return Double.parseDouble((String) val);
             } catch (NumberFormatException e) {
                 return 0;
             }
         }
-        if (val instanceof Boolean) return (Boolean)val ? 1:0;
+        if (val instanceof Boolean)
+            return (Boolean) val ? 1 : 0;
+        return 0;
+    }
+
+    private int toInteger(Object val) {
+        if (val instanceof Integer)
+            return (Integer) val;
+        if (val instanceof Double)
+            return (int) ((Double) val).doubleValue();
+        if (val instanceof String) {
+            try {
+                return Integer.parseInt((String) val);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        if (val instanceof Boolean)
+            return (Boolean) val ? 1 : 0;
         return 0;
     }
 
