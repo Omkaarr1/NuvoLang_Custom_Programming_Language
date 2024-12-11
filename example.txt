@@ -7,19 +7,11 @@ print->"Value of y after increment = " + y;
 z = x * y;
 print->"Value of z = " + z;
 if (z > 100) print->"z is greater than 100" else print->"z is not greater than 100";
-print->"Done";
-x = 10;
-x = x + 5;
-print->"Value of x = " + x;
-y = 20;
-y++;
-print->"Value of y after increment = " + y;
-z = x * y;
-print->"Value of z = " + z;
-if (z > 100) print->"z is greater than 100" else print->"z is not greater than 100";
 loop 1 to 3 {
     print->"Loop iteration: " + 1;
     x = x + 1;
     print->"x incremented to: " + x;
-}
+};
+input->"Enter your name:" -> name;
+print->"Hello, " + name + "!";
 print->"Done";

@@ -60,7 +60,7 @@ class ExpressionStatement extends Node {
     ExpressionStatement(Node expr) { this.expr = expr; }
 }
 
-// New Node type for loops
+// New Node types for loops and input
 class LoopNode extends Node {
     Node start;
     Node end;
@@ -69,6 +69,15 @@ class LoopNode extends Node {
         this.start = start;
         this.end = end;
         this.body = body;
+    }
+}
+
+class InputNode extends Node {
+    Node prompt;
+    Node variable;
+    InputNode(Node prompt, Node variable) {
+        this.prompt = prompt;
+        this.variable = variable;
     }
 }
 
@@ -131,6 +140,14 @@ class Parser {
             return new PrintNode(expr);
         }
 
+        if (match(TokenType.INPUT)) {
+            consume(TokenType.ARROW, "Expect '->' after input");
+            Node prompt = parseExpression();
+            consume(TokenType.ARROW, "Expect '->' before variable in input statement");
+            Node variable = parseExpression();
+            return new InputNode(prompt, variable);
+        }
+
         Node expr = parseExpression();
         return new ExpressionStatement(expr);
     }
@@ -149,8 +166,7 @@ class Parser {
         List<Node> statements = new ArrayList<>();
         while (!isAtEnd() && !match(TokenType.RBRACE)) {
             statements.add(parseStatement());
-            // Optionally consume semicolons if they are part of the language
-            // but in this implementation, semicolons are handled in Main.java
+            // Semicolons are handled in Main.java's splitStatements
         }
         return statements;
     }

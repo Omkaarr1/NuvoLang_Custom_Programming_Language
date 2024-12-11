@@ -132,7 +132,7 @@ class Lexer {
                     } else if (isAlpha(c)) {
                         tokens.add(identifierToken(c));
                     } else {
-                        // Ignore unknown characters
+                        // Ignore unknown characters or handle as needed
                     }
             }
         }
@@ -167,6 +167,8 @@ class Lexer {
                 return new Token(TokenType.LOOP, word);
             case "to":
                 return new Token(TokenType.TO, word);
+            case "input":
+                return new Token(TokenType.INPUT, word);
             default:
                 return new Token(TokenType.IDENTIFIER, word);
         }

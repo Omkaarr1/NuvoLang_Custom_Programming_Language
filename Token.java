@@ -6,7 +6,7 @@ enum TokenType {
     PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ,
     PLUS_PLUS, MINUS_MINUS,
     ARROW,
-    PRINT, IF, ELSE, LOOP, TO,
+    PRINT, IF, ELSE, LOOP, TO, INPUT,
     LBRACE, RBRACE,
     LPAREN, RPAREN,
     EOF, ASSIGN,
@@ -26,4 +26,3 @@ class Token {
         return type + "('" + lexeme + "')";
     }
 }
-    

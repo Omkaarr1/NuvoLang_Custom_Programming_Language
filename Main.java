@@ -160,6 +160,16 @@ public class Main {
             for (Node stmt : ln.body) {
                 debugPrintNode(stmt, indent + 4);
             }
+        } else if (node instanceof InputNode) {
+            InputNode in = (InputNode) node;
+            printIndent(indent);
+            System.out.println("InputNode");
+            printIndent(indent + 2);
+            System.out.println("Prompt:");
+            debugPrintNode(in.prompt, indent + 4);
+            printIndent(indent + 2);
+            System.out.println("Variable:");
+            debugPrintNode(in.variable, indent + 4);
         } else if (node instanceof ExpressionStatement) {
             ExpressionStatement es = (ExpressionStatement) node;
             printIndent(indent);

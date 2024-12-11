@@ -2,6 +2,7 @@ import java.util.*;
 
 class Interpreter {
     private Map<String, Object> variables = new HashMap<>();
+    private Scanner scanner = new Scanner(System.in);
 
     public void execute(Node node) {
         if (node instanceof PrintNode) {
@@ -26,6 +27,31 @@ class Interpreter {
                 // For simplicity, not adding loop index variable
                 executeBlock(loop.body);
             }
+        } else if (node instanceof InputNode) {
+            InputNode inputNode = (InputNode) node;
+            Object promptObj = evaluate(inputNode.prompt);
+            if (!(promptObj instanceof String)) {
+                throw new RuntimeException("Input prompt must be a string.");
+            }
+            String prompt = (String) promptObj;
+            System.out.print(prompt + " ");
+            String userInput = scanner.nextLine();
+            if (!(inputNode.variable instanceof VariableNode)) {
+                throw new RuntimeException("Input must be assigned to a variable.");
+            }
+            String varName = ((VariableNode) inputNode.variable).name;
+            // Attempt to parse input as number, else store as string
+            Object value;
+            try {
+                if (userInput.contains(".")) {
+                    value = Double.parseDouble(userInput);
+                } else {
+                    value = Integer.parseInt(userInput);
+                }
+            } catch (NumberFormatException e) {
+                value = userInput;
+            }
+            variables.put(varName, value);
         } else if (node instanceof ExpressionStatement) {
             // Evaluate the expression statement, which may include assignments.
             evaluate(((ExpressionStatement) node).expr);
@@ -144,8 +170,36 @@ class Interpreter {
             int start = toInteger(startObj);
             int end = toInteger(endObj);
             for (int i = start; i <= end; i++) {
+                // Optionally, set a loop variable (e.g., i)
+                // For simplicity, not adding loop index variable
                 executeBlock(loop.body);
             }
+        } else if (node instanceof InputNode) {
+            InputNode inputNode = (InputNode) node;
+            Object promptObj = evaluate(inputNode.prompt);
+            if (!(promptObj instanceof String)) {
+                throw new RuntimeException("Input prompt must be a string.");
+            }
+            String prompt = (String) promptObj;
+            System.out.print(prompt + " ");
+            String userInput = scanner.nextLine();
+            if (!(inputNode.variable instanceof VariableNode)) {
+                throw new RuntimeException("Input must be assigned to a variable.");
+            }
+            String varName = ((VariableNode) inputNode.variable).name;
+            // Attempt to parse input as number, else store as string
+            Object value;
+            try {
+                if (userInput.contains(".")) {
+                    value = Double.parseDouble(userInput);
+                } else {
+                    value = Integer.parseInt(userInput);
+                }
+            } catch (NumberFormatException e) {
+                value = userInput;
+            }
+            variables.put(varName, value);
+            return value;
         }
 
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
