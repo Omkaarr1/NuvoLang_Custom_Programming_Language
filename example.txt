@@ -7,8 +7,9 @@ print->"Value of y after increment = " + y;
 z = x * y;
 print->"Value of z = " + z;
 if (z > 100) print->"z is greater than 100" else print->"z is not greater than 100";
+i=0;
 loop 1 to 3 {
-    print->"Loop iteration: " + 1;
+    print->"Loop iteration: " + ++i;
     x = x + 1;
     print->"x incremented to: " + x;
 };
