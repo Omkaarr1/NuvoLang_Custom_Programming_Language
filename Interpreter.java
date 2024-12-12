@@ -27,6 +27,11 @@ class Interpreter {
                 // For simplicity, not adding loop index variable
                 executeBlock(loop.body);
             }
+        } else if (node instanceof WhileNode) {  // Handle WhileNode
+            WhileNode whileNode = (WhileNode) node;
+            while (isTrue(evaluate(whileNode.condition))) {
+                executeBlock(whileNode.body);
+            }
         } else if (node instanceof InputNode) {
             InputNode inputNode = (InputNode) node;
             Object promptObj = evaluate(inputNode.prompt);
@@ -173,6 +178,11 @@ class Interpreter {
                 // Optionally, set a loop variable (e.g., i)
                 // For simplicity, not adding loop index variable
                 executeBlock(loop.body);
+            }
+        } else if (node instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) node;
+            while (isTrue(evaluate(whileNode.condition))) {
+                executeBlock(whileNode.body); // Execute the loop body as long as condition is true
             }
         } else if (node instanceof InputNode) {
             InputNode inputNode = (InputNode) node;

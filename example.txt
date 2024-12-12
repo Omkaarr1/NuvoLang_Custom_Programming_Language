@@ -15,4 +15,10 @@ loop 1 to 3 {
 };
 input->"Enter your name:" -> name;
 print->"Hello, " + name + "!";
+x = 0;
+while (x < 3) {
+    print->"Current value of x: " + x;
+    x++;
+}
+print->"Loop completed.";
 print->"Done";

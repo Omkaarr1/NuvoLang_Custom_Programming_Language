@@ -169,6 +169,8 @@ class Lexer {
                 return new Token(TokenType.TO, word);
             case "input":
                 return new Token(TokenType.INPUT, word);
+            case "while":
+                return new Token(TokenType.WHILE, word);
             default:
                 return new Token(TokenType.IDENTIFIER, word);
         }

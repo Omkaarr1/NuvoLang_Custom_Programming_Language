@@ -2,7 +2,6 @@ import java.util.*;
 
 abstract class Node {}
 
-// Existing Node types
 class BinaryNode extends Node {
     Node left, right;
     TokenType op;
@@ -81,6 +80,15 @@ class InputNode extends Node {
     }
 }
 
+class WhileNode extends Node {
+    Node condition;
+    List<Node> body;
+    WhileNode(Node condition, List<Node> body) {
+        this.condition = condition;
+        this.body = body;
+    }
+}
+
 class Parser {
     private final List<Token> tokens;
     private int current = 0;
@@ -120,6 +128,15 @@ class Parser {
     public Node parseStatement() {
         if (match(TokenType.LOOP)) {
             return parseLoop();
+        }
+
+        if (match(TokenType.WHILE)) {
+            consume(TokenType.LPAREN, "Expect '(' after 'while'.");
+            Node condition = parseExpression();
+            consume(TokenType.RPAREN, "Expect ')' after while condition.");
+            consume(TokenType.LBRACE, "Expect '{' to start while body.");
+            List<Node> body = parseBlock();
+            return new WhileNode(condition, body);
         }
 
         if (match(TokenType.IF)) {
@@ -166,7 +183,6 @@ class Parser {
         List<Node> statements = new ArrayList<>();
         while (!isAtEnd() && !match(TokenType.RBRACE)) {
             statements.add(parseStatement());
-            // Semicolons are handled in Main.java's splitStatements
         }
         return statements;
     }
