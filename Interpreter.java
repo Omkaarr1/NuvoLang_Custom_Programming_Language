@@ -1,10 +1,36 @@
+// Interpreter.java
+
 import java.util.*;
 
+class ReturnException extends RuntimeException {
+    Object value;
+    ReturnException(Object value) {
+        this.value = value;
+    }
+}
+
 class Interpreter {
-    private Map<String, Object> variables = new HashMap<>();
+    private Map<String, FunctionDefNode> functions = new HashMap<>();
+    private Deque<Map<String, Object>> callStack = new ArrayDeque<>();
     private Scanner scanner = new Scanner(System.in);
 
-    public void execute(Node node) {
+    public Interpreter() {
+        // Initialize global scope
+        callStack.push(new HashMap<>());
+    }
+
+    public void execute(List<Node> nodes) {
+        try {
+            for (Node node : nodes) {
+                executeNode(node);
+            }
+        } catch (ReturnException re) {
+            System.err.println("Return statement outside of function.");
+            throw re;
+        }
+    }
+
+    private void executeNode(Node node) {
         if (node instanceof PrintNode) {
             Object val = evaluate(((PrintNode) node).expr);
             System.out.println(val);
@@ -12,9 +38,9 @@ class Interpreter {
             IfNode ifNode = (IfNode) node;
             Object condition = evaluate(ifNode.condition);
             if (isTrue(condition)) {
-                execute(ifNode.ifBranch);
+                executeBlock(ifNode.ifBranch);
             } else if (ifNode.elseBranch != null) {
-                execute(ifNode.elseBranch);
+                executeBlock(ifNode.elseBranch);
             }
         } else if (node instanceof LoopNode) {
             LoopNode loop = (LoopNode) node;
@@ -24,7 +50,7 @@ class Interpreter {
             int end = toInteger(endObj);
             for (int i = start; i <= end; i++) {
                 // Optionally, set a loop variable (e.g., i)
-                // For simplicity, not adding loop index variable
+                setVariable("i", i);
                 executeBlock(loop.body);
             }
         } else if (node instanceof WhileNode) {  // Handle WhileNode
@@ -56,21 +82,31 @@ class Interpreter {
             } catch (NumberFormatException e) {
                 value = userInput;
             }
-            variables.put(varName, value);
+            setVariable(varName, value);
         } else if (node instanceof ExpressionStatement) {
             // Evaluate the expression statement, which may include assignments.
             evaluate(((ExpressionStatement) node).expr);
+        } else if (node instanceof FunctionDefNode) {
+            FunctionDefNode func = (FunctionDefNode) node;
+            functions.put(func.name, func);
+        } else if (node instanceof ReturnNode) {
+            ReturnNode ret = (ReturnNode) node;
+            Object value = ret.value != null ? evaluate(ret.value) : null;
+            throw new ReturnException(value);
+        } else {
+            throw new RuntimeException("Unknown node type: " + node.getClass().getName());
         }
     }
 
     private void executeBlock(List<Node> statements) {
         for (Node stmt : statements) {
-            execute(stmt);
+            executeNode(stmt);
         }
     }
 
     public void debugPrintVariables() {
         System.out.println("----DEBUG: CURRENT VARIABLES----");
+        Map<String, Object> variables = callStack.peek();
         for (Map.Entry<String, Object> entry : variables.entrySet()) {
             System.out.println(entry.getKey() + " = " + entry.getValue());
         }
@@ -97,21 +133,22 @@ class Interpreter {
             return ((LiteralNode) node).value;
         } else if (node instanceof VariableNode) {
             String name = ((VariableNode) node).name;
-            if (!variables.containsKey(name)) {
+            if (!getVariable(name).isPresent()) {
                 System.err.println("----DEBUG ERROR----");
                 System.err.println("Undefined variable access: " + name);
                 System.err.println("------------------");
                 throw new RuntimeException("Undefined variable: " + name);
             }
-            return variables.get(name);
+            return getVariable(name).get();
         } else if (node instanceof AssignNode) {
             AssignNode assign = (AssignNode) node;
             Object rightVal = evaluate(assign.value);
-            Object leftVal = variables.getOrDefault(assign.name, null);
+            Optional<Object> leftValOpt = getVariable(assign.name);
+            Object leftVal = leftValOpt.orElse(null);
 
             if (assign.op == TokenType.ASSIGN) {
                 // Simple assignment
-                variables.put(assign.name, rightVal);
+                setVariable(assign.name, rightVal);
                 return rightVal;
             } else {
                 // Compound assignment (x += 5, etc.)
@@ -122,7 +159,7 @@ class Interpreter {
                     throw new RuntimeException("Undefined variable: " + assign.name);
                 }
                 Object newVal = applyOp(leftVal, rightVal, operatorFromCompound(assign.op));
-                variables.put(assign.name, newVal);
+                setVariable(assign.name, newVal);
                 return newVal;
             }
         } else if (node instanceof BinaryNode) {
@@ -136,7 +173,8 @@ class Interpreter {
                     throw new RuntimeException("Postfix operator requires a variable.");
                 }
                 String varName = ((VariableNode) un.expr).name;
-                Object val = variables.getOrDefault(varName, null);
+                Optional<Object> valOpt = getVariable(varName);
+                Object val = valOpt.orElse(null);
                 if (val == null) {
                     System.err.println("----DEBUG ERROR----");
                     System.err.println("Undefined variable in postfix operation: " + varName);
@@ -145,7 +183,7 @@ class Interpreter {
                 }
                 Object retVal = val;
                 Object newVal = applyUnary(val, un.op);
-                variables.put(varName, newVal);
+                setVariable(varName, newVal);
                 return retVal;
             } else {
                 if (un.op == TokenType.PLUS_PLUS || un.op == TokenType.MINUS_MINUS) {
@@ -153,7 +191,8 @@ class Interpreter {
                         throw new RuntimeException("Prefix operator requires a variable.");
                     }
                     String varName = ((VariableNode) un.expr).name;
-                    Object val = variables.getOrDefault(varName, null);
+                    Optional<Object> valOpt = getVariable(varName);
+                    Object val = valOpt.orElse(null);
                     if (val == null) {
                         System.err.println("----DEBUG ERROR----");
                         System.err.println("Undefined variable in prefix operation: " + varName);
@@ -161,55 +200,52 @@ class Interpreter {
                         throw new RuntimeException("Undefined variable: " + varName);
                     }
                     Object newVal = applyUnary(val, un.op);
-                    variables.put(varName, newVal);
+                    setVariable(varName, newVal);
                     return newVal;
                 } else if (un.op == TokenType.NOT) {
                     Object val = evaluate(un.expr);
                     return !isTrue(val);
                 }
             }
-        } else if (node instanceof LoopNode) {
-            LoopNode loop = (LoopNode) node;
-            Object startObj = evaluate(loop.start);
-            Object endObj = evaluate(loop.end);
-            int start = toInteger(startObj);
-            int end = toInteger(endObj);
-            for (int i = start; i <= end; i++) {
-                // Optionally, set a loop variable (e.g., i)
-                // For simplicity, not adding loop index variable
-                executeBlock(loop.body);
+        } else if (node instanceof FunctionCallNode) {
+            FunctionCallNode call = (FunctionCallNode) node;
+            FunctionDefNode func = functions.get(call.name);
+            if (func == null) {
+                throw new RuntimeException("Undefined function: " + call.name);
             }
-        } else if (node instanceof WhileNode) {
-            WhileNode whileNode = (WhileNode) node;
-            while (isTrue(evaluate(whileNode.condition))) {
-                executeBlock(whileNode.body); // Execute the loop body as long as condition is true
+            if (call.arguments.size() != func.parameters.size()) {
+                throw new RuntimeException("Function " + call.name + " expects " + func.parameters.size() + " arguments but got " + call.arguments.size());
             }
-        } else if (node instanceof InputNode) {
-            InputNode inputNode = (InputNode) node;
-            Object promptObj = evaluate(inputNode.prompt);
-            if (!(promptObj instanceof String)) {
-                throw new RuntimeException("Input prompt must be a string.");
+
+            // Evaluate arguments
+            List<Object> argValues = new ArrayList<>();
+            for (Node arg : call.arguments) {
+                argValues.add(evaluate(arg));
             }
-            String prompt = (String) promptObj;
-            System.out.print(prompt + " ");
-            String userInput = scanner.nextLine();
-            if (!(inputNode.variable instanceof VariableNode)) {
-                throw new RuntimeException("Input must be assigned to a variable.");
+
+            // Create a new scope for function
+            Map<String, Object> localScope = new HashMap<>();
+            for (int i = 0; i < func.parameters.size(); i++) {
+                localScope.put(func.parameters.get(i), argValues.get(i));
             }
-            String varName = ((VariableNode) inputNode.variable).name;
-            // Attempt to parse input as number, else store as string
-            Object value;
+            callStack.push(localScope);
+
             try {
-                if (userInput.contains(".")) {
-                    value = Double.parseDouble(userInput);
-                } else {
-                    value = Integer.parseInt(userInput);
-                }
-            } catch (NumberFormatException e) {
-                value = userInput;
+                executeBlock(func.body);
+            } catch (ReturnException re) {
+                callStack.pop();
+                return re.value;
             }
-            variables.put(varName, value);
-            return value;
+
+            callStack.pop();
+            return null;
+        } else if (node instanceof FunctionDefNode) {
+            // Already handled in executeNode
+            return null;
+        } else if (node instanceof ReturnNode) {
+            ReturnNode ret = (ReturnNode) node;
+            Object value = ret.value != null ? evaluate(ret.value) : null;
+            throw new ReturnException(value);
         }
 
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
@@ -330,5 +366,53 @@ class Interpreter {
 
     private boolean isInteger(double d) {
         return d == Math.floor(d);
+    }
+
+    private Optional<Object> getVariable(String name) {
+        for (Map<String, Object> scope : callStack) {
+            if (scope.containsKey(name)) {
+                return Optional.of(scope.get(name));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private void setVariable(String name, Object value) {
+        for (Map<String, Object> scope : callStack) {
+            if (scope.containsKey(name)) {
+                scope.put(name, value);
+                return;
+            }
+        }
+        // If variable not found in any scope, set in current (top) scope
+        callStack.peek().put(name, value);
+    }
+
+    // Function to call a function externally (optional)
+    public Object callFunction(String name, List<Object> args) {
+        FunctionDefNode func = functions.get(name);
+        if (func == null) {
+            throw new RuntimeException("Undefined function: " + name);
+        }
+        if (args.size() != func.parameters.size()) {
+            throw new RuntimeException("Function " + name + " expects " + func.parameters.size() + " arguments but got " + args.size());
+        }
+
+        // Create a new scope for function
+        Map<String, Object> localScope = new HashMap<>();
+        for (int i = 0; i < func.parameters.size(); i++) {
+            localScope.put(func.parameters.get(i), args.get(i));
+        }
+        callStack.push(localScope);
+
+        try {
+            executeBlock(func.body);
+        } catch (ReturnException re) {
+            callStack.pop();
+            return re.value;
+        }
+
+        callStack.pop();
+        return null;
     }
 }

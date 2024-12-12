@@ -1,7 +1,10 @@
+// Parser.java
+
 import java.util.*;
 
 abstract class Node {}
 
+// Expression Nodes
 class BinaryNode extends Node {
     Node left, right;
     TokenType op;
@@ -45,9 +48,9 @@ class PrintNode extends Node {
 
 class IfNode extends Node {
     Node condition;
-    Node ifBranch;
-    Node elseBranch;
-    IfNode(Node condition, Node ifBranch, Node elseBranch) {
+    List<Node> ifBranch;
+    List<Node> elseBranch;
+    IfNode(Node condition, List<Node> ifBranch, List<Node> elseBranch) {
         this.condition = condition;
         this.ifBranch = ifBranch;
         this.elseBranch = elseBranch;
@@ -59,7 +62,6 @@ class ExpressionStatement extends Node {
     ExpressionStatement(Node expr) { this.expr = expr; }
 }
 
-// New Node types for loops and input
 class LoopNode extends Node {
     Node start;
     Node end;
@@ -86,6 +88,33 @@ class WhileNode extends Node {
     WhileNode(Node condition, List<Node> body) {
         this.condition = condition;
         this.body = body;
+    }
+}
+
+class FunctionDefNode extends Node {
+    String name;
+    List<String> parameters;
+    List<Node> body;
+    FunctionDefNode(String name, List<String> parameters, List<Node> body) {
+        this.name = name;
+        this.parameters = parameters;
+        this.body = body;
+    }
+}
+
+class FunctionCallNode extends Node {
+    String name;
+    List<Node> arguments;
+    FunctionCallNode(String name, List<Node> arguments) {
+        this.name = name;
+        this.arguments = arguments;
+    }
+}
+
+class ReturnNode extends Node {
+    Node value;
+    ReturnNode(Node value) {
+        this.value = value;
     }
 }
 
@@ -125,7 +154,23 @@ class Parser {
         throw new RuntimeException("Parse Error: Expected " + type + " but got " + peek().type + ". " + errMsg);
     }
 
+    public List<Node> parse() {
+        List<Node> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            statements.add(parseStatement());
+        }
+        return statements;
+    }
+
     public Node parseStatement() {
+        if (match(TokenType.FUNCTION)) {
+            return parseFunctionDef();
+        }
+
+        if (match(TokenType.RETURN)) {
+            return parseReturn();
+        }
+
         if (match(TokenType.LOOP)) {
             return parseLoop();
         }
@@ -136,58 +181,103 @@ class Parser {
             consume(TokenType.RPAREN, "Expect ')' after while condition.");
             consume(TokenType.LBRACE, "Expect '{' to start while body.");
             List<Node> body = parseBlock();
+            consume(TokenType.RBRACE, "Expect '}' after while body.");
+            // Removed semicolon consumption after while loop
             return new WhileNode(condition, body);
         }
 
         if (match(TokenType.IF)) {
-            consume(TokenType.LPAREN, "Expect '(' after if.");
+            consume(TokenType.LPAREN, "Expect '(' after 'if'.");
             Node cond = parseExpression();
             consume(TokenType.RPAREN, "Expect ')' after if condition.");
-            Node ifBranch = parseStatement();
-            Node elseBranch = null;
+            consume(TokenType.LBRACE, "Expect '{' to start 'if' branch.");
+            List<Node> ifBranch = parseBlock();
+            consume(TokenType.RBRACE, "Expect '}' after 'if' branch.");
+            List<Node> elseBranch = null;
             if (match(TokenType.ELSE)) {
-                elseBranch = parseStatement();
+                consume(TokenType.LBRACE, "Expect '{' to start 'else' branch.");
+                elseBranch = parseBlock();
+                consume(TokenType.RBRACE, "Expect '}' after 'else' branch.");
             }
+            // Removed semicolon consumption after if-else statement
             return new IfNode(cond, ifBranch, elseBranch);
         }
 
         if (match(TokenType.PRINT)) {
-            consume(TokenType.ARROW, "Expect '->' after print");
+            consume(TokenType.ARROW, "Expect '->' after 'print'");
             Node expr = parseExpression();
+            consume(TokenType.SEMICOLON, "Expect ';' after print statement.");
             return new PrintNode(expr);
         }
 
         if (match(TokenType.INPUT)) {
-            consume(TokenType.ARROW, "Expect '->' after input");
+            consume(TokenType.ARROW, "Expect '->' after 'input'");
             Node prompt = parseExpression();
             consume(TokenType.ARROW, "Expect '->' before variable in input statement");
             Node variable = parseExpression();
+            consume(TokenType.SEMICOLON, "Expect ';' after input statement.");
             return new InputNode(prompt, variable);
         }
 
         Node expr = parseExpression();
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.");
         return new ExpressionStatement(expr);
     }
 
+    private Node parseFunctionDef() {
+        // Syntax: function fname(param1, param2, ...) { body };
+        Token nameToken = consume(TokenType.IDENTIFIER, "Expect function name.");
+        String name = nameToken.lexeme;
+
+        consume(TokenType.LPAREN, "Expect '(' after function name.");
+        List<String> parameters = new ArrayList<>();
+        if (!match(TokenType.RPAREN)) {
+            do {
+                Token param = consume(TokenType.IDENTIFIER, "Expect parameter name.");
+                parameters.add(param.lexeme);
+            } while (match(TokenType.COMMA));
+            consume(TokenType.RPAREN, "Expect ')' after parameters.");
+        }
+
+        consume(TokenType.LBRACE, "Expect '{' to start function body.");
+        List<Node> body = parseBlock();
+        consume(TokenType.RBRACE, "Expect '}' after function body.");
+        consume(TokenType.SEMICOLON, "Expect ';' after function definition.");
+        return new FunctionDefNode(name, parameters, body);
+    }
+
+    private Node parseReturn() {
+        // Syntax: return expr;
+        Node value = null;
+        if (!match(TokenType.SEMICOLON)) {
+            value = parseExpression();
+            consume(TokenType.SEMICOLON, "Expect ';' after return value.");
+        }
+        return new ReturnNode(value);
+    }
+
     private Node parseLoop() {
-        // Syntax: loop <start> to <end> { <body> }
+        // Syntax: loop <start> to <end> { <body> };
         Node start = parseExpression();
         consume(TokenType.TO, "Expect 'to' in loop declaration.");
         Node end = parseExpression();
         consume(TokenType.LBRACE, "Expect '{' to start loop body.");
         List<Node> body = parseBlock();
+        consume(TokenType.RBRACE, "Expect '}' after loop body.");
+        consume(TokenType.SEMICOLON, "Expect ';' after loop.");
         return new LoopNode(start, end, body);
     }
 
     private List<Node> parseBlock() {
         List<Node> statements = new ArrayList<>();
-        while (!isAtEnd() && !match(TokenType.RBRACE)) {
+        while (!isAtEnd() && peek().type != TokenType.RBRACE) {
             statements.add(parseStatement());
         }
         return statements;
     }
 
-    private Node parseExpression() { return parseAssignment(); }
+    public Node parseExpression() { return parseAssignment(); }
+
     private Node parseAssignment() {
         Node left = parseLogicalOr();
 
@@ -288,14 +378,26 @@ class Parser {
             return new LiteralNode(tokens.get(current - 1).lexeme);
         }
         if (match(TokenType.IDENTIFIER)) {
-            return new VariableNode(tokens.get(current - 1).lexeme);
+            String name = tokens.get(current - 1).lexeme;
+            if (match(TokenType.LPAREN)) {
+                // Function call
+                List<Node> args = new ArrayList<>();
+                if (!match(TokenType.RPAREN)) {
+                    do {
+                        args.add(parseExpression());
+                    } while (match(TokenType.COMMA));
+                    consume(TokenType.RPAREN, "Expect ')' after arguments.");
+                }
+                return new FunctionCallNode(name, args);
+            }
+            return new VariableNode(name);
         }
         if (match(TokenType.LPAREN)) {
             Node expr = parseExpression();
             consume(TokenType.RPAREN, "Expect ')' after expression.");
             return expr;
         }
-        throw new RuntimeException("Parse Error: Unexpected token " + peek());
+        throw new RuntimeException("Parse Error: Unexpected token " + peek().type + " (" + peek().lexeme + ")");
     }
 
     private Object parseNumber(String s) {

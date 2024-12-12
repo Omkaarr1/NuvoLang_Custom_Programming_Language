@@ -1,3 +1,5 @@
+// Token.java
+
 enum TokenType {
     IDENTIFIER, NUMBER, STRING,
     PLUS, MINUS, STAR, SLASH, MOD,
@@ -7,6 +9,8 @@ enum TokenType {
     PLUS_PLUS, MINUS_MINUS,
     ARROW,
     PRINT, IF, ELSE, LOOP, TO, INPUT, WHILE,
+    FUNCTION, RETURN, // New keywords
+    COMMA, // New token for parameter separation
     LBRACE, RBRACE,
     LPAREN, RPAREN,
     EOF, ASSIGN,

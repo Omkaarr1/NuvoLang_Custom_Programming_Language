@@ -6,8 +6,12 @@ y++;
 print->"Value of y after increment = " + y;
 z = x * y;
 print->"Value of z = " + z;
-if (z > 100) print->"z is greater than 100" else print->"z is not greater than 100";
-i=0;
+if (z > 100) { 
+    print->"z is greater than 100"; 
+} else { 
+    print->"z is not greater than 100"; 
+}
+i = 0;
 loop 1 to 3 {
     print->"Loop iteration: " + ++i;
     x = x + 1;
@@ -21,4 +25,15 @@ while (x < 3) {
     x++;
 }
 print->"Loop completed.";
+
+function factorial(n) {
+    if (n == 0) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+};
+input -> "Enter a number:" -> num;
+result = factorial(num);
+print -> result;
+
 print->"Done";

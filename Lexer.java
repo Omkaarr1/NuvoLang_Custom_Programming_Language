@@ -1,4 +1,37 @@
+// Lexer.java
+
 import java.util.*;
+
+enum TokenType {
+    IDENTIFIER, NUMBER, STRING,
+    PLUS, MINUS, STAR, SLASH, MOD,
+    EQ, EQ_EQ, NOT_EQ, GT, LT, GT_EQ, LT_EQ,
+    AND_AND, OR_OR, NOT,
+    PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ,
+    PLUS_PLUS, MINUS_MINUS,
+    ARROW,
+    PRINT, IF, ELSE, LOOP, TO, INPUT, WHILE,
+    FUNCTION, RETURN, // New keywords
+    COMMA, // New token for parameter separation
+    LBRACE, RBRACE,
+    LPAREN, RPAREN,
+    EOF, ASSIGN,
+    SEMICOLON
+}
+
+class Token {
+    TokenType type;
+    String lexeme;
+
+    Token(TokenType type, String lexeme) {
+        this.type = type;
+        this.lexeme = lexeme;
+    }
+
+    public String toString() {
+        return type + "('" + lexeme + "')";
+    }
+}
 
 class Lexer {
     private final String input;
@@ -104,11 +137,15 @@ class Lexer {
                 case '&':
                     if (match('&')) {
                         tokens.add(new Token(TokenType.AND_AND, "&&"));
+                    } else {
+                        System.err.println("Warning: Unknown token '&'");
                     }
                     break;
                 case '|':
                     if (match('|')) {
                         tokens.add(new Token(TokenType.OR_OR, "||"));
+                    } else {
+                        System.err.println("Warning: Unknown token '|'");
                     }
                     break;
                 case '{':
@@ -123,6 +160,12 @@ class Lexer {
                 case ')':
                     tokens.add(new Token(TokenType.RPAREN, ")"));
                     break;
+                case ',':
+                    tokens.add(new Token(TokenType.COMMA, ","));
+                    break;
+                case ';':
+                    tokens.add(new Token(TokenType.SEMICOLON, ";"));
+                    break;
                 case '"':
                     tokens.add(new Token(TokenType.STRING, readString()));
                     break;
@@ -133,6 +176,7 @@ class Lexer {
                         tokens.add(identifierToken(c));
                     } else {
                         // Ignore unknown characters or handle as needed
+                        System.err.println("Warning: Ignoring unknown character '" + c + "'");
                     }
             }
         }
@@ -143,7 +187,12 @@ class Lexer {
     private Token numberToken(char first) {
         StringBuilder sb = new StringBuilder();
         sb.append(first);
+        boolean hasDot = false;
         while (!isAtEnd() && (isDigit(peek()) || peek() == '.')) {
+            if (peek() == '.') {
+                if (hasDot) break; // Only one dot allowed
+                hasDot = true;
+            }
             sb.append(advance());
         }
         return new Token(TokenType.NUMBER, sb.toString());
@@ -171,6 +220,10 @@ class Lexer {
                 return new Token(TokenType.INPUT, word);
             case "while":
                 return new Token(TokenType.WHILE, word);
+            case "function":
+                return new Token(TokenType.FUNCTION, word);
+            case "return":
+                return new Token(TokenType.RETURN, word);
             default:
                 return new Token(TokenType.IDENTIFIER, word);
         }
@@ -179,7 +232,21 @@ class Lexer {
     private String readString() {
         StringBuilder sb = new StringBuilder();
         while (!isAtEnd() && peek() != '"') {
-            sb.append(advance());
+            char c = advance();
+            if (c == '\\') { // Handle escape characters
+                if (!isAtEnd()) {
+                    char next = advance();
+                    switch (next) {
+                        case 'n': sb.append('\n'); break;
+                        case 't': sb.append('\t'); break;
+                        case '"': sb.append('"'); break;
+                        case '\\': sb.append('\\'); break;
+                        default: sb.append(next); break;
+                    }
+                }
+            } else {
+                sb.append(c);
+            }
         }
         if (!isAtEnd()) advance(); // consume closing "
         return sb.toString();
