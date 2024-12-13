@@ -1,6 +1,10 @@
 // Interpreter.java
 
 import java.util.*;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.IvParameterSpec;
+import java.util.Base64;
 
 class ReturnException extends RuntimeException {
     public final Object value;
@@ -10,10 +14,24 @@ class ReturnException extends RuntimeException {
     }
 }
 
+class Variable {
+    Object value;
+    boolean isEncrypted;
+
+    Variable(Object value, boolean isEncrypted) {
+        this.value = value;
+        this.isEncrypted = isEncrypted;
+    }
+}
+
 public class Interpreter {
     private final Map<String, FunctionDefNode> functions = new HashMap<>();
-    private final Deque<Map<String, Object>> callStack = new ArrayDeque<>();
+    private final Deque<Map<String, Variable>> callStack = new ArrayDeque<>();
     private final Scanner scanner = new Scanner(System.in);
+
+    // Encryption key and IV (for AES)
+    private static final String ENCRYPTION_KEY = "0123456789abcdef"; // 16-byte key for AES-128
+    private static final String INIT_VECTOR = "abcdef9876543210"; // 16-byte IV
 
     public Interpreter() {
         // Initialize global scope
@@ -33,7 +51,7 @@ public class Interpreter {
 
     private void executeNode(Node node) {
         if (node instanceof PrintNode) {
-            Object val = evaluate(((PrintNode) node).expr);
+            Object val = evaluateForPrint(((PrintNode) node).expr);
             System.out.println(val);
         } else if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;
@@ -61,7 +79,7 @@ public class Interpreter {
             }
         } else if (node instanceof InputNode) {
             InputNode inputNode = (InputNode) node;
-            Object promptObj = evaluate(inputNode.prompt);
+            Object promptObj = evaluate(((InputNode) node).prompt);
             if (!(promptObj instanceof String)) {
                 throw new RuntimeException("Input prompt must be a string.");
             }
@@ -72,6 +90,13 @@ public class Interpreter {
                 throw new RuntimeException("Input must be assigned to a variable.");
             }
             String varName = ((VariableNode) inputNode.variable).name;
+            // Check if variable is encrypted (starts with @ENC)
+            boolean isEncrypted = false;
+            String actualVarName = varName;
+            if (varName.startsWith("@ENC")) {
+                isEncrypted = true;
+                actualVarName = varName.substring(4); // Remove @ENC
+            }
             // Attempt to parse input as boolean, number, array, or else store as string
             Object value;
             if (userInput.equalsIgnoreCase("true") || userInput.equalsIgnoreCase("false")) {
@@ -122,7 +147,12 @@ public class Interpreter {
                     }
                 }
             }
-            setVariable(varName, value);
+            if (isEncrypted) {
+                String encryptedValue = encrypt(String.valueOf(value));
+                setVariable(actualVarName, encryptedValue, true);
+            } else {
+                setVariable(actualVarName, value, false);
+            }
         } else if (node instanceof ExpressionStatement) {
             // Evaluate the expression statement, which may include assignments.
             evaluate(((ExpressionStatement) node).expr);
@@ -146,9 +176,9 @@ public class Interpreter {
 
     public void debugPrintVariables() {
         System.out.println("----DEBUG: CURRENT VARIABLES----");
-        Map<String, Object> variables = callStack.peek();
-        for (Map.Entry<String, Object> entry : variables.entrySet()) {
-            System.out.println(entry.getKey() + " = " + entry.getValue());
+        Map<String, Variable> variables = callStack.peek();
+        for (Map.Entry<String, Variable> entry : variables.entrySet()) {
+            System.out.println(entry.getKey() + " = " + (entry.getValue().isEncrypted ? entry.getValue().value : entry.getValue().value));
         }
         System.out.println("--------------------------------");
     }
@@ -168,49 +198,93 @@ public class Interpreter {
         }
     }
 
+    // Overloaded evaluate method for different contexts
     private Object evaluate(Node node) {
+        return evaluate(node, true);
+    }
+
+    private Object evaluate(Node node, boolean decrypt) {
         if (node instanceof LiteralNode) {
             return ((LiteralNode) node).value;
         } else if (node instanceof ArrayLiteralNode) {
             List<Object> list = new ArrayList<>();
             for (Node elem : ((ArrayLiteralNode) node).elements) {
-                list.add(evaluate(elem));
+                list.add(evaluate(elem, decrypt));
             }
             return list;
         } else if (node instanceof VariableNode) {
-            String name = ((VariableNode) node).name;
-            if (!getVariable(name).isPresent()) {
-                System.err.println("----DEBUG ERROR----");
-                System.err.println("Undefined variable access: " + name);
-                System.err.println("------------------");
-                throw new RuntimeException("Undefined variable: " + name);
+            String varName = ((VariableNode) node).name;
+            boolean isEncrypted = false;
+            String actualVarName = varName;
+            if (varName.startsWith("@ENC")) {
+                isEncrypted = true;
+                actualVarName = varName.substring(4); // Remove @ENC
             }
-            return getVariable(name).get();
+            Optional<Variable> varOpt = getVariable(actualVarName);
+            if (!varOpt.isPresent()) {
+                System.err.println("----DEBUG ERROR----");
+                System.err.println("Undefined variable access: " + varName);
+                System.err.println("------------------");
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            Variable var = varOpt.get();
+            if (var.isEncrypted) {
+                if (decrypt) {
+                    String decryptedValue = decrypt(var.value.toString());
+                    return parseValue(decryptedValue);
+                } else {
+                    return var.value; // Return encrypted value
+                }
+            } else {
+                return var.value;
+            }
         } else if (node instanceof AssignNode) {
             AssignNode assign = (AssignNode) node;
-            Object rightVal = evaluate(assign.value);
-            Optional<Object> leftValOpt = getVariable(assign.name);
-            Object leftVal = leftValOpt.orElse(null);
-
+            String varName = assign.name;
+            boolean isEncrypted = false;
+            String actualVarName = varName;
+            if (varName.startsWith("@ENC")) {
+                isEncrypted = true;
+                actualVarName = varName.substring(4); // Remove @ENC
+            }
+            Object rightVal = evaluate(assign.value, decrypt);
             if (assign.op == TokenType.ASSIGN) {
-                // Simple assignment
-                setVariable(assign.name, rightVal);
-                return rightVal;
+                if (isEncrypted) {
+                    String encryptedValue = encrypt(String.valueOf(rightVal));
+                    setVariable(actualVarName, encryptedValue, true);
+                } else {
+                    setVariable(actualVarName, rightVal, false);
+                }
+                return isEncrypted ? encrypt(String.valueOf(rightVal)) : rightVal;
             } else {
-                // Compound assignment (x += 5, etc.)
-                if (leftVal == null) {
+                // Compound assignment
+                Optional<Variable> varOpt = getVariable(actualVarName);
+                if (!varOpt.isPresent()) {
                     System.err.println("----DEBUG ERROR----");
-                    System.err.println("Attempting compound assignment on undefined variable: " + assign.name);
+                    System.err.println("Attempting compound assignment on undefined variable: " + varName);
                     System.err.println("------------------");
-                    throw new RuntimeException("Undefined variable: " + assign.name);
+                    throw new RuntimeException("Undefined variable: " + varName);
+                }
+                Variable var = varOpt.get();
+                Object leftVal;
+                if (var.isEncrypted) {
+                    leftVal = parseValue(decrypt(var.value.toString()));
+                } else {
+                    leftVal = var.value;
                 }
                 Object newVal = applyOp(leftVal, rightVal, operatorFromCompound(assign.op));
-                setVariable(assign.name, newVal);
-                return newVal;
+                if (isEncrypted) {
+                    String encryptedNewVal = encrypt(String.valueOf(newVal));
+                    setVariable(actualVarName, encryptedNewVal, true);
+                    return encryptedNewVal;
+                } else {
+                    setVariable(actualVarName, newVal, false);
+                    return newVal;
+                }
             }
         } else if (node instanceof BinaryNode) {
-            Object left = evaluate(((BinaryNode) node).left);
-            Object right = evaluate(((BinaryNode) node).right);
+            Object left = evaluate(((BinaryNode) node).left, decrypt);
+            Object right = evaluate(((BinaryNode) node).right, decrypt);
             return applyOp(left, right, ((BinaryNode) node).op);
         } else if (node instanceof UnaryNode) {
             UnaryNode un = (UnaryNode) node;
@@ -219,17 +293,35 @@ public class Interpreter {
                     throw new RuntimeException("Postfix operator requires a variable.");
                 }
                 String varName = ((VariableNode) un.expr).name;
-                Optional<Object> valOpt = getVariable(varName);
-                Object val = valOpt.orElse(null);
-                if (val == null) {
+                boolean isEncrypted = false;
+                String actualVarName = varName;
+                if (varName.startsWith("@ENC")) {
+                    isEncrypted = true;
+                    actualVarName = varName.substring(4); // Remove @ENC
+                }
+                Optional<Variable> varOpt = getVariable(actualVarName);
+                if (!varOpt.isPresent()) {
                     System.err.println("----DEBUG ERROR----");
                     System.err.println("Undefined variable in postfix operation: " + varName);
                     System.err.println("------------------");
                     throw new RuntimeException("Undefined variable: " + varName);
                 }
+                Variable var = varOpt.get();
+                Object val;
+                if (var.isEncrypted) {
+                    String decryptedValue = decrypt(var.value.toString());
+                    val = parseValue(decryptedValue);
+                } else {
+                    val = var.value;
+                }
                 Object retVal = val;
                 Object newVal = applyUnary(val, un.op);
-                setVariable(varName, newVal);
+                if (isEncrypted) {
+                    String encryptedNewVal = encrypt(String.valueOf(newVal));
+                    setVariable(actualVarName, encryptedNewVal, true);
+                } else {
+                    setVariable(actualVarName, newVal, false);
+                }
                 return retVal;
             } else {
                 if (un.op == TokenType.PLUS_PLUS || un.op == TokenType.MINUS_MINUS) {
@@ -237,19 +329,38 @@ public class Interpreter {
                         throw new RuntimeException("Prefix operator requires a variable.");
                     }
                     String varName = ((VariableNode) un.expr).name;
-                    Optional<Object> valOpt = getVariable(varName);
-                    Object val = valOpt.orElse(null);
-                    if (val == null) {
+                    boolean isEncrypted = false;
+                    String actualVarName = varName;
+                    if (varName.startsWith("@ENC")) {
+                        isEncrypted = true;
+                        actualVarName = varName.substring(4); // Remove @ENC
+                    }
+                    Optional<Variable> varOpt = getVariable(actualVarName);
+                    if (!varOpt.isPresent()) {
                         System.err.println("----DEBUG ERROR----");
                         System.err.println("Undefined variable in prefix operation: " + varName);
                         System.err.println("------------------");
                         throw new RuntimeException("Undefined variable: " + varName);
                     }
+                    Variable var = varOpt.get();
+                    Object val;
+                    if (var.isEncrypted) {
+                        String decryptedValue = decrypt(var.value.toString());
+                        val = parseValue(decryptedValue);
+                    } else {
+                        val = var.value;
+                    }
                     Object newVal = applyUnary(val, un.op);
-                    setVariable(varName, newVal);
-                    return newVal;
+                    if (isEncrypted) {
+                        String encryptedNewVal = encrypt(String.valueOf(newVal));
+                        setVariable(actualVarName, encryptedNewVal, true);
+                        return parseValue(decrypt(encryptedNewVal));
+                    } else {
+                        setVariable(actualVarName, newVal, false);
+                        return newVal;
+                    }
                 } else if (un.op == TokenType.NOT) {
-                    Object val = evaluate(un.expr);
+                    Object val = evaluate(un.expr, decrypt);
                     return !isTrue(val);
                 }
             }
@@ -266,13 +377,13 @@ public class Interpreter {
             // Evaluate arguments
             List<Object> argValues = new ArrayList<>();
             for (Node arg : call.arguments) {
-                argValues.add(evaluate(arg));
+                argValues.add(evaluate(arg, decrypt));
             }
 
             // Create a new scope for function
-            Map<String, Object> localScope = new HashMap<>();
+            Map<String, Variable> localScope = new HashMap<>();
             for (int i = 0; i < func.parameters.size(); i++) {
-                localScope.put(func.parameters.get(i), argValues.get(i));
+                localScope.put(func.parameters.get(i), new Variable(argValues.get(i), false));
             }
             callStack.push(localScope);
 
@@ -287,11 +398,16 @@ public class Interpreter {
             return null;
         } else if (node instanceof ReturnNode) {
             ReturnNode ret = (ReturnNode) node;
-            Object value = ret.value != null ? evaluate(ret.value) : null;
+            Object value = ret.value != null ? evaluate(ret.value, decrypt) : null;
             throw new ReturnException(value);
         }
 
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
+    }
+
+    private Object evaluateForPrint(Node node) {
+        // Evaluates the node without decrypting encrypted variables
+        return evaluate(node, false);
     }
 
     private Object applyUnary(Object val, TokenType op) {
@@ -435,8 +551,8 @@ public class Interpreter {
         return d == Math.floor(d);
     }
 
-    private Optional<Object> getVariable(String name) {
-        for (Map<String, Object> scope : callStack) {
+    private Optional<Variable> getVariable(String name) {
+        for (Map<String, Variable> scope : callStack) {
             if (scope.containsKey(name)) {
                 return Optional.of(scope.get(name));
             }
@@ -444,15 +560,15 @@ public class Interpreter {
         return Optional.empty();
     }
 
-    private void setVariable(String name, Object value) {
-        for (Map<String, Object> scope : callStack) {
+    private void setVariable(String name, Object value, boolean isEncrypted) {
+        for (Map<String, Variable> scope : callStack) {
             if (scope.containsKey(name)) {
-                scope.put(name, value);
+                scope.put(name, new Variable(value, isEncrypted));
                 return;
             }
         }
         // If variable not found in any scope, set in current (top) scope
-        callStack.peek().put(name, value);
+        callStack.peek().put(name, new Variable(value, isEncrypted));
     }
 
     // Function to call a function externally (optional)
@@ -466,9 +582,9 @@ public class Interpreter {
         }
 
         // Create a new scope for function
-        Map<String, Object> localScope = new HashMap<>();
+        Map<String, Variable> localScope = new HashMap<>();
         for (int i = 0; i < func.parameters.size(); i++) {
-            localScope.put(func.parameters.get(i), args.get(i));
+            localScope.put(func.parameters.get(i), new Variable(args.get(i), false));
         }
         callStack.push(localScope);
 
@@ -481,5 +597,84 @@ public class Interpreter {
 
         callStack.pop();
         return null;
+    }
+
+    // Encryption function using AES
+    private String encrypt(String value) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            SecretKeySpec key = new SecretKeySpec(ENCRYPTION_KEY.getBytes("UTF-8"), "AES");
+            IvParameterSpec iv = new IvParameterSpec(INIT_VECTOR.getBytes("UTF-8"));
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            byte[] encrypted = cipher.doFinal(value.getBytes("UTF-8"));
+            return Base64.getEncoder().encodeToString(encrypted);
+        } catch (Exception ex) {
+            throw new RuntimeException("Encryption failed: " + ex.getMessage());
+        }
+    }
+
+    // Decryption function using AES
+    private String decrypt(String encrypted) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            SecretKeySpec key = new SecretKeySpec(ENCRYPTION_KEY.getBytes("UTF-8"), "AES");
+            IvParameterSpec iv = new IvParameterSpec(INIT_VECTOR.getBytes("UTF-8"));
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+            byte[] decoded = Base64.getDecoder().decode(encrypted);
+            byte[] original = cipher.doFinal(decoded);
+            return new String(original, "UTF-8");
+        } catch (Exception ex) {
+            throw new RuntimeException("Decryption failed: " + ex.getMessage());
+        }
+    }
+
+    // Parse decrypted string back to its original type
+    private Object parseValue(String value) {
+        // Attempt to parse as boolean
+        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
+            return Boolean.parseBoolean(value);
+        }
+        // Attempt to parse as integer
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            // Not an integer
+        }
+        // Attempt to parse as double
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            // Not a double
+        }
+        // Attempt to parse as array (simple parsing)
+        value = value.trim();
+        if (value.startsWith("[") && value.endsWith("]")) {
+            String elementsStr = value.substring(1, value.length() - 1).trim();
+            if (elementsStr.isEmpty()) {
+                return new ArrayList<Object>();
+            } else {
+                String[] elements = elementsStr.split(",");
+                List<Object> list = new ArrayList<>();
+                for (String elem : elements) {
+                    elem = elem.trim();
+                    if (elem.equalsIgnoreCase("true") || elem.equalsIgnoreCase("false")) {
+                        list.add(Boolean.parseBoolean(elem));
+                    } else {
+                        try {
+                            if (elem.contains(".")) {
+                                list.add(Double.parseDouble(elem));
+                            } else {
+                                list.add(Integer.parseInt(elem));
+                            }
+                        } catch (NumberFormatException ex) {
+                            list.add(elem.replaceAll("^\"|\"$", "")); // Remove quotes if any
+                        }
+                    }
+                }
+                return list;
+            }
+        }
+        // Else, treat as string
+        return value;
     }
 }

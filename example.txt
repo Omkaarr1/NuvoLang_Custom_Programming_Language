@@ -60,15 +60,31 @@ print->"a AND b: " + (a && b);
 print->"a OR b: " + (a || b);
 print->"NOT a: " + (!a);
 
-// Array as input
-input->"Enter an array (e.g., [1, 2, 3]):" -> userArr;
-print->"You entered: " + userArr;
-
 // Floating-point operations
 pi = 3.14159;
 radius = 5;
 area = pi * radius * radius;
 print->"Area of the circle: " + area;
 
+
+// Encrypted variable assignment
+@ENCpassword = "mySecretPassword";
+print->"Encrypted password: " + @ENCpassword;
+
+
+// Encrypted numerical variable
+@ENCsecretNumber = 42;
+print->"Encrypted secret number: " + @ENCsecretNumber;
+
+// Using encrypted variable in computation
+result = @ENCsecretNumber * 2;
+print->"Result after computation: " + result;
+
+// Printing encrypted variable again
+print->"Encrypted secret number after computation: " + @ENCsecretNumber;
+
+
 // Done
 print->"Done";
+
+

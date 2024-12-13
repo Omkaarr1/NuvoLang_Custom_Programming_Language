@@ -176,6 +176,13 @@ public class Lexer {
                         tokens.add(numberToken(c, startLine, startColumn));
                     } else if (isAlpha(c)) {
                         tokens.add(identifierToken(c, startLine, startColumn));
+                    } else if (c == '@') { // Handle '@' prefix
+                        if (isAlpha(peek())) {
+                            String identifier = readAtIdentifier(c);
+                            tokens.add(new Token(TokenType.IDENTIFIER, identifier, startLine, startColumn));
+                        } else {
+                            error(startLine, startColumn, "Unexpected character '@'");
+                        }
                     } else {
                         error(startLine, startColumn, "Unexpected character '" + c + "'");
                     }
@@ -185,18 +192,13 @@ public class Lexer {
         return tokens;
     }
 
-    private Token numberToken(char first, int startLine, int startColumn) {
+    private String readAtIdentifier(char first) {
         StringBuilder sb = new StringBuilder();
         sb.append(first);
-        boolean hasDot = false;
-        while (!isAtEnd() && (isDigit(peek()) || peek() == '.')) {
-            if (peek() == '.') {
-                if (hasDot) break; // Only one dot allowed
-                hasDot = true;
-            }
+        while (!isAtEnd() && isAlphaNumeric(peek())) {
             sb.append(advance());
         }
-        return new Token(TokenType.NUMBER, sb.toString(), startLine, startColumn);
+        return sb.toString();
     }
 
     private Token identifierToken(char first, int startLine, int startColumn) {
@@ -206,7 +208,15 @@ public class Lexer {
             sb.append(advance());
         }
         String word = sb.toString();
-        switch (word) {
+        // Check if identifier starts with @ENC
+        boolean isEncrypted = false;
+        String actualName = word;
+        if (word.startsWith("@ENC")) {
+            isEncrypted = true;
+            actualName = word.substring(4); // Remove @ENC
+        }
+
+        switch (actualName) {
             case "print":
                 return new Token(TokenType.PRINT, word, startLine, startColumn);
             case "if":
@@ -231,6 +241,20 @@ public class Lexer {
             default:
                 return new Token(TokenType.IDENTIFIER, word, startLine, startColumn);
         }
+    }
+
+    private Token numberToken(char first, int startLine, int startColumn) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(first);
+        boolean hasDot = false;
+        while (!isAtEnd() && (isDigit(peek()) || peek() == '.')) {
+            if (peek() == '.') {
+                if (hasDot) break; // Only one dot allowed
+                hasDot = true;
+            }
+            sb.append(advance());
+        }
+        return new Token(TokenType.NUMBER, sb.toString(), startLine, startColumn);
     }
 
     private String readString() {

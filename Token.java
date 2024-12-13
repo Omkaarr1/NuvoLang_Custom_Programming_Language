@@ -15,6 +15,6 @@ public class Token {
 
     @Override
     public String toString() {
-        return type + "('" + lexeme + "') at " + line + ":" + column;
+        return type + " '" + lexeme + "' at " + line + ":" + column;
     }
 }

@@ -2,7 +2,7 @@
 
 public enum TokenType {
     // Single-character tokens
-    PLUS, MINUS, STAR, SLASH, MOD,
+    PLUS, MINUS, STAR, SLASH, MOD, DOT,
     EQ, EQ_EQ, NOT, NOT_EQ,
     GT, LT, GT_EQ, LT_EQ,
     AND_AND, OR_OR,

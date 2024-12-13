@@ -84,10 +84,6 @@ class ExpressionStatement extends Node {
     }
 }
 
-class LoopNode extends Node { // This will be removed
-    // Deprecated: Replaced by ForNode
-}
-
 class ForNode extends Node { // New node for standard for loops
     Node initialization;
     Node condition;
