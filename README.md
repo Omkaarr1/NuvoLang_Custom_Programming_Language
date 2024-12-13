@@ -144,7 +144,7 @@ result = add(10, 20);
 - [x] Implement function declarations and calls.
 - [x] Extend type support (e.g., boolean, floating-point).
 - [x] Improve error handling with detailed messages.
-- [x] Add support for arrays and lists.
+- [x] Add support for arrays.
 
 ---
 
