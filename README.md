@@ -142,9 +142,9 @@ result = add(10, 20);
 
 - [x] Add support for loops (`while`, `for`).
 - [x] Implement function declarations and calls.
-- [ ] Extend type support (e.g., boolean, floating-point).
-- [ ] Improve error handling with detailed messages.
-- [ ] Add support for arrays and lists.
+- [x] Extend type support (e.g., boolean, floating-point).
+- [x] Improve error handling with detailed messages.
+- [x] Add support for arrays and lists.
 
 ---
 
