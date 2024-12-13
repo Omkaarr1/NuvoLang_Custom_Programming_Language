@@ -1,32 +1,20 @@
 // Token.java
 
-enum TokenType {
-    IDENTIFIER, NUMBER, STRING,
-    PLUS, MINUS, STAR, SLASH, MOD,
-    EQ, EQ_EQ, NOT_EQ, GT, LT, GT_EQ, LT_EQ,
-    AND_AND, OR_OR, NOT,
-    PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ,
-    PLUS_PLUS, MINUS_MINUS,
-    ARROW,
-    PRINT, IF, ELSE, LOOP, TO, INPUT, WHILE,
-    FUNCTION, RETURN, // New keywords
-    COMMA, // New token for parameter separation
-    LBRACE, RBRACE,
-    LPAREN, RPAREN,
-    EOF, ASSIGN,
-    SEMICOLON
-}
+public class Token {
+    public final TokenType type;
+    public final String lexeme;
+    public final int line;
+    public final int column;
 
-class Token {
-    TokenType type;
-    String lexeme;
-
-    Token(TokenType type, String lexeme) {
+    public Token(TokenType type, String lexeme, int line, int column) {
         this.type = type;
         this.lexeme = lexeme;
+        this.line = line;
+        this.column = column;
     }
 
+    @Override
     public String toString() {
-        return type + "('" + lexeme + "')";
+        return type + "('" + lexeme + "') at " + line + ":" + column;
     }
 }

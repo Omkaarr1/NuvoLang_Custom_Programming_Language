@@ -3,16 +3,17 @@
 import java.util.*;
 
 class ReturnException extends RuntimeException {
-    Object value;
-    ReturnException(Object value) {
+    public final Object value;
+
+    public ReturnException(Object value) {
         this.value = value;
     }
 }
 
-class Interpreter {
-    private Map<String, FunctionDefNode> functions = new HashMap<>();
-    private Deque<Map<String, Object>> callStack = new ArrayDeque<>();
-    private Scanner scanner = new Scanner(System.in);
+public class Interpreter {
+    private final Map<String, FunctionDefNode> functions = new HashMap<>();
+    private final Deque<Map<String, Object>> callStack = new ArrayDeque<>();
+    private final Scanner scanner = new Scanner(System.in);
 
     public Interpreter() {
         // Initialize global scope
@@ -71,16 +72,55 @@ class Interpreter {
                 throw new RuntimeException("Input must be assigned to a variable.");
             }
             String varName = ((VariableNode) inputNode.variable).name;
-            // Attempt to parse input as number, else store as string
+            // Attempt to parse input as boolean, number, array, or else store as string
             Object value;
-            try {
-                if (userInput.contains(".")) {
-                    value = Double.parseDouble(userInput);
-                } else {
-                    value = Integer.parseInt(userInput);
+            if (userInput.equalsIgnoreCase("true") || userInput.equalsIgnoreCase("false")) {
+                value = Boolean.parseBoolean(userInput);
+            } else {
+                try {
+                    if (userInput.contains(".")) {
+                        value = Double.parseDouble(userInput);
+                    } else {
+                        value = Integer.parseInt(userInput);
+                    }
+                } catch (NumberFormatException e) {
+                    // Check if it's an array input, e.g., [1, 2, 3]
+                    userInput = userInput.trim();
+                    if (userInput.startsWith("[") && userInput.endsWith("]")) {
+                        // Simple array parsing
+                        String elementsStr = userInput.substring(1, userInput.length() - 1).trim();
+                        if (elementsStr.isEmpty()) {
+                            value = new ArrayList<Object>();
+                        } else {
+                            String[] elements = elementsStr.split(",");
+                            List<Object> list = new ArrayList<>();
+                            for (String elem : elements) {
+                                elem = elem.trim();
+                                if (elem.equalsIgnoreCase("true") || elem.equalsIgnoreCase("false")) {
+                                    list.add(Boolean.parseBoolean(elem));
+                                } else {
+                                    try {
+                                        if (elem.contains(".")) {
+                                            list.add(Double.parseDouble(elem));
+                                        } else {
+                                            list.add(Integer.parseInt(elem));
+                                        }
+                                    } catch (NumberFormatException ex) {
+                                        list.add(elem.replaceAll("^\"|\"$", "")); // Remove quotes if any
+                                    }
+                                }
+                            }
+                            value = list;
+                        }
+                    } else {
+                        // Treat as string, remove surrounding quotes if present
+                        if (userInput.startsWith("\"") && userInput.endsWith("\"")) {
+                            value = userInput.substring(1, userInput.length() - 1);
+                        } else {
+                            value = userInput;
+                        }
+                    }
                 }
-            } catch (NumberFormatException e) {
-                value = userInput;
             }
             setVariable(varName, value);
         } else if (node instanceof ExpressionStatement) {
@@ -131,6 +171,12 @@ class Interpreter {
     private Object evaluate(Node node) {
         if (node instanceof LiteralNode) {
             return ((LiteralNode) node).value;
+        } else if (node instanceof ArrayLiteralNode) {
+            List<Object> list = new ArrayList<>();
+            for (Node elem : ((ArrayLiteralNode) node).elements) {
+                list.add(evaluate(elem));
+            }
+            return list;
         } else if (node instanceof VariableNode) {
             String name = ((VariableNode) node).name;
             if (!getVariable(name).isPresent()) {
@@ -239,9 +285,6 @@ class Interpreter {
 
             callStack.pop();
             return null;
-        } else if (node instanceof FunctionDefNode) {
-            // Already handled in executeNode
-            return null;
         } else if (node instanceof ReturnNode) {
             ReturnNode ret = (ReturnNode) node;
             Object value = ret.value != null ? evaluate(ret.value) : null;
@@ -264,8 +307,22 @@ class Interpreter {
     }
 
     private Object applyOp(Object left, Object right, TokenType op) {
+        // Handle different types: number, string, boolean, array
         if (op == TokenType.PLUS && (left instanceof String || right instanceof String)) {
             return String.valueOf(left) + String.valueOf(right);
+        }
+
+        if (left instanceof List && op == TokenType.PLUS) {
+            if (right instanceof List) {
+                List<Object> combined = new ArrayList<>((List<Object>) left);
+                combined.addAll((List<Object>) right);
+                return combined;
+            }
+        }
+
+        if (left instanceof List && (op == TokenType.EQ_EQ || op == TokenType.NOT_EQ)) {
+            boolean equals = left.equals(right);
+            return op == TokenType.EQ_EQ ? equals : !equals;
         }
 
         double l = toNumber(left);
@@ -273,6 +330,11 @@ class Interpreter {
 
         switch (op) {
             case PLUS:
+                if (left instanceof List && right instanceof List) {
+                    List<Object> combined = new ArrayList<>((List<Object>) left);
+                    combined.addAll((List<Object>) right);
+                    return combined;
+                }
                 return isInteger(l) && isInteger(r) ? (int) (l + r) : (l + r);
             case MINUS:
                 return isInteger(l) && isInteger(r) ? (int) (l - r) : (l - r);
@@ -292,6 +354,9 @@ class Interpreter {
                     System.err.println("Division by zero in modulo");
                     System.err.println("------------------");
                     throw new RuntimeException("Division by zero");
+                }
+                if (left instanceof List || right instanceof List) {
+                    throw new RuntimeException("Modulo operator cannot be applied to arrays.");
                 }
                 return (int) l % (int) r;
             case EQ_EQ:
@@ -325,6 +390,8 @@ class Interpreter {
             return ((Number) val).doubleValue() != 0;
         if (val instanceof String)
             return ((String) val).length() > 0;
+        if (val instanceof List)
+            return ((List<?>) val).size() > 0;
         return val != null;
     }
 

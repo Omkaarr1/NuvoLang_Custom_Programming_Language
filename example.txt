@@ -1,24 +1,35 @@
+// example.txt
+
+// Variable assignments and arithmetic
 x = 10;
 x = x + 5;
 print->"Value of x = " + x;
-y = 20;
+y = 20.5;
 y++;
 print->"Value of y after increment = " + y;
 z = x * y;
 print->"Value of z = " + z;
+
+// Conditional statements with booleans
 if (z > 100) { 
     print->"z is greater than 100"; 
 } else { 
     print->"z is not greater than 100"; 
 }
+
+// Loop with array
 i = 0;
 loop 1 to 3 {
     print->"Loop iteration: " + ++i;
     x = x + 1;
     print->"x incremented to: " + x;
 };
+    
+// Input and string manipulation
 input->"Enter your name:" -> name;
 print->"Hello, " + name + "!";
+
+// While loop
 x = 0;
 while (x < 3) {
     print->"Current value of x: " + x;
@@ -26,14 +37,39 @@ while (x < 3) {
 }
 print->"Loop completed.";
 
+// Array operations
+arr = [1, 2, 3, 4, 5];
+print->"Initial array: " + arr;
+arr += [6, 7];
+print->"Array after concatenation: " + arr;
+
+// Function definition and recursion
 function factorial(n) {
     if (n == 0) {
         return 1;
     }
     return n * factorial(n - 1);
 };
-input -> "Enter a number:" -> num;
+input->"Enter a number:" -> num;
 result = factorial(num);
-print -> result;
+print->"Factorial of " + num + " is " + result;
 
+// Boolean operations
+a = true;
+b = false;
+print->"a AND b: " + (a && b);
+print->"a OR b: " + (a || b);
+print->"NOT a: " + (!a);
+
+// Array as input
+input->"Enter an array (e.g., [1, 2, 3]):" -> userArr;
+print->"You entered: " + userArr;
+
+// Floating-point operations
+pi = 3.14159;
+radius = 5;
+area = pi * radius * radius;
+print->"Area of the circle: " + area;
+
+// Done
 print->"Done";
