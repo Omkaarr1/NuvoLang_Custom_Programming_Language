@@ -140,8 +140,8 @@ result = add(10, 20);
 
 ## Roadmap
 
-- [ ] Add support for loops (`while`, `for`).
-- [ ] Implement function declarations and calls.
+- [x] Add support for loops (`while`, `for`).
+- [x] Implement function declarations and calls.
 - [ ] Extend type support (e.g., boolean, floating-point).
 - [ ] Improve error handling with detailed messages.
 - [ ] Add support for arrays and lists.
