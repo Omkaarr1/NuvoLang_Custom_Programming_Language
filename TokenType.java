@@ -18,7 +18,7 @@ public enum TokenType {
     IDENTIFIER, NUMBER, STRING, BOOLEAN,
 
     // Keywords
-    PRINT, IF, ELSE, LOOP, TO, INPUT, WHILE,
+    PRINT, IF, ELSE, FOR, TO, INPUT, WHILE,
     FUNCTION, RETURN,
 
     // End of file

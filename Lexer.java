@@ -213,8 +213,8 @@ public class Lexer {
                 return new Token(TokenType.IF, word, startLine, startColumn);
             case "else":
                 return new Token(TokenType.ELSE, word, startLine, startColumn);
-            case "loop":
-                return new Token(TokenType.LOOP, word, startLine, startColumn);
+            case "for":
+                return new Token(TokenType.FOR, word, startLine, startColumn);
             case "to":
                 return new Token(TokenType.TO, word, startLine, startColumn);
             case "input":

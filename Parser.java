@@ -84,14 +84,20 @@ class ExpressionStatement extends Node {
     }
 }
 
-class LoopNode extends Node {
-    Node start;
-    Node end;
+class LoopNode extends Node { // This will be removed
+    // Deprecated: Replaced by ForNode
+}
+
+class ForNode extends Node { // New node for standard for loops
+    Node initialization;
+    Node condition;
+    Node increment;
     List<Node> body;
 
-    LoopNode(Node start, Node end, List<Node> body) {
-        this.start = start;
-        this.end = end;
+    ForNode(Node initialization, Node condition, Node increment, List<Node> body) {
+        this.initialization = initialization;
+        this.condition = condition;
+        this.increment = increment;
         this.body = body;
     }
 }
@@ -222,8 +228,8 @@ public class Parser {
             return parseReturn();
         }
 
-        if (match(TokenType.LOOP)) {
-            return parseLoop();
+        if (match(TokenType.FOR)) {
+            return parseFor();
         }
 
         if (match(TokenType.WHILE)) {
@@ -280,16 +286,19 @@ public class Parser {
         return new ReturnNode(value);
     }
 
-    private Node parseLoop() {
-        // Syntax: loop <start> to <end> { <body> };
-        Node start = parseExpression();
-        consume(TokenType.TO, "Expect 'to' in loop declaration.");
-        Node end = parseExpression();
-        consume(TokenType.LBRACE, "Expect '{' to start loop body.");
+    private Node parseFor() {
+        // Syntax: for (initialization; condition; increment) { body }
+        consume(TokenType.LPAREN, "Expect '(' after 'for'.");
+        Node initialization = parseExpression();
+        consume(TokenType.SEMICOLON, "Expect ';' after for initialization.");
+        Node condition = parseExpression();
+        consume(TokenType.SEMICOLON, "Expect ';' after for condition.");
+        Node increment = parseExpression();
+        consume(TokenType.RPAREN, "Expect ')' after for clauses.");
+        consume(TokenType.LBRACE, "Expect '{' to start for loop body.");
         List<Node> body = parseBlock();
-        consume(TokenType.RBRACE, "Expect '}' after loop body.");
-        consume(TokenType.SEMICOLON, "Expect ';' after loop.");
-        return new LoopNode(start, end, body);
+        consume(TokenType.RBRACE, "Expect '}' after for loop body.");
+        return new ForNode(initialization, condition, increment, body);
     }
 
     private Node parseWhile() {

@@ -17,14 +17,13 @@ if (z > 100) {
     print->"z is not greater than 100"; 
 }
 
-// Loop with array
-i = 0;
-loop 1 to 3 {
-    print->"Loop iteration: " + ++i;
+// For loop with array operations
+for (i = 1; i <= 3; i++) {
+    print->"Loop iteration: " + i;
     x = x + 1;
     print->"x incremented to: " + x;
-};
-    
+}
+
 // Input and string manipulation
 input->"Enter your name:" -> name;
 print->"Hello, " + name + "!";

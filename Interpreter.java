@@ -43,18 +43,18 @@ public class Interpreter {
             } else if (ifNode.elseBranch != null) {
                 executeBlock(ifNode.elseBranch);
             }
-        } else if (node instanceof LoopNode) {
-            LoopNode loop = (LoopNode) node;
-            Object startObj = evaluate(loop.start);
-            Object endObj = evaluate(loop.end);
-            int start = toInteger(startObj);
-            int end = toInteger(endObj);
-            for (int i = start; i <= end; i++) {
-                // Optionally, set a loop variable (e.g., i)
-                setVariable("i", i);
-                executeBlock(loop.body);
+        } else if (node instanceof ForNode) { // Handle ForNode
+            ForNode forNode = (ForNode) node;
+            // Execute initialization
+            evaluate(forNode.initialization);
+            // Loop condition and increment
+            while (isTrue(evaluate(forNode.condition))) {
+                // Execute loop body
+                executeBlock(forNode.body);
+                // Execute increment
+                evaluate(forNode.increment);
             }
-        } else if (node instanceof WhileNode) {  // Handle WhileNode
+        } else if (node instanceof WhileNode) { // Handle WhileNode
             WhileNode whileNode = (WhileNode) node;
             while (isTrue(evaluate(whileNode.condition))) {
                 executeBlock(whileNode.body);
