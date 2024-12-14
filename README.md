@@ -157,8 +157,6 @@ Done
 - **AST Inspection**: Displays the parsed Abstract Syntax Tree (AST).
 - **Variable States**: Prints the state of all variables after each statement.
 
---
-
 ## Customization
 
 You can extend this language by:
