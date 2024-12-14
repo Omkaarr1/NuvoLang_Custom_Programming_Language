@@ -1,5 +1,3 @@
-// TokenType.java
-
 public enum TokenType {
     // Single-character tokens
     PLUS, MINUS, STAR, SLASH, MOD, DOT,
@@ -20,6 +18,9 @@ public enum TokenType {
     // Keywords
     PRINT, IF, ELSE, FOR, TO, INPUT, WHILE,
     FUNCTION, RETURN,
+
+    // Event trigger
+    EVENT_TRIGGER,
 
     // End of file
     EOF,

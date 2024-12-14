@@ -1,5 +1,3 @@
-// Lexer.java
-
 import java.util.*;
 
 public class Lexer {
@@ -54,14 +52,11 @@ public class Lexer {
             int startColumn = column;
             char c = advance();
             switch (c) {
-                // Whitespace
                 case ' ':
                 case '\t':
                 case '\r':
                 case '\n':
-                    // Ignore and continue
                     break;
-                // Single and multi-character tokens
                 case '+':
                     if (match('+')) {
                         tokens.add(new Token(TokenType.PLUS_PLUS, "++", startLine, startColumn));
@@ -93,7 +88,6 @@ public class Lexer {
                     if (match('=')) {
                         tokens.add(new Token(TokenType.SLASH_EQ, "/=", startLine, startColumn));
                     } else if (match('/')) {
-                        // Comment until end of line
                         while (!isAtEnd() && peek() != '\n') advance();
                     } else {
                         tokens.add(new Token(TokenType.SLASH, "/", startLine, startColumn));
@@ -174,15 +168,8 @@ public class Lexer {
                 default:
                     if (isDigit(c)) {
                         tokens.add(numberToken(c, startLine, startColumn));
-                    } else if (isAlpha(c)) {
+                    } else if (isAlpha(c) || c == '@') {
                         tokens.add(identifierToken(c, startLine, startColumn));
-                    } else if (c == '@') { // Handle '@' prefix
-                        if (isAlpha(peek())) {
-                            String identifier = readAtIdentifier(c);
-                            tokens.add(new Token(TokenType.IDENTIFIER, identifier, startLine, startColumn));
-                        } else {
-                            error(startLine, startColumn, "Unexpected character '@'");
-                        }
                     } else {
                         error(startLine, startColumn, "Unexpected character '" + c + "'");
                     }
@@ -208,12 +195,18 @@ public class Lexer {
             sb.append(advance());
         }
         String word = sb.toString();
+
         // Check if identifier starts with @ENC
         boolean isEncrypted = false;
         String actualName = word;
         if (word.startsWith("@ENC")) {
             isEncrypted = true;
             actualName = word.substring(4); // Remove @ENC
+        }
+
+        // Check if identifier starts with @EVENT_TRIGGER
+        if (word.startsWith("@EVENT_TRIGGER")) {
+            return new Token(TokenType.EVENT_TRIGGER, word, startLine, startColumn);
         }
 
         switch (actualName) {
@@ -249,7 +242,7 @@ public class Lexer {
         boolean hasDot = false;
         while (!isAtEnd() && (isDigit(peek()) || peek() == '.')) {
             if (peek() == '.') {
-                if (hasDot) break; // Only one dot allowed
+                if (hasDot) break;
                 hasDot = true;
             }
             sb.append(advance());
@@ -261,7 +254,7 @@ public class Lexer {
         StringBuilder sb = new StringBuilder();
         while (!isAtEnd() && peek() != '"') {
             char c = advance();
-            if (c == '\\') { // Handle escape characters
+            if (c == '\\') {
                 if (!isAtEnd()) {
                     char next = advance();
                     switch (next) {
@@ -276,9 +269,8 @@ public class Lexer {
                 sb.append(c);
             }
         }
-        if (!isAtEnd()) advance(); // consume closing "
+        if (!isAtEnd()) advance();
         else {
-            // Handle unterminated string
             throw new RuntimeException("Unterminated string literal at line " + line + ", column " + column);
         }
         return sb.toString();

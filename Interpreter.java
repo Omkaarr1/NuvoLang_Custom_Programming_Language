@@ -1,10 +1,13 @@
-// Interpreter.java
-
 import java.util.*;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import java.util.Base64;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 
 class ReturnException extends RuntimeException {
     public final Object value;
@@ -29,12 +32,10 @@ public class Interpreter {
     private final Deque<Map<String, Variable>> callStack = new ArrayDeque<>();
     private final Scanner scanner = new Scanner(System.in);
 
-    // Encryption key and IV (for AES)
-    private static final String ENCRYPTION_KEY = "0123456789abcdef"; // 16-byte key for AES-128
-    private static final String INIT_VECTOR = "abcdef9876543210"; // 16-byte IV
+    private static final String ENCRYPTION_KEY = "0123456789abcdef"; 
+    private static final String INIT_VECTOR = "abcdef9876543210";
 
     public Interpreter() {
-        // Initialize global scope
         callStack.push(new HashMap<>());
     }
 
@@ -61,18 +62,14 @@ public class Interpreter {
             } else if (ifNode.elseBranch != null) {
                 executeBlock(ifNode.elseBranch);
             }
-        } else if (node instanceof ForNode) { // Handle ForNode
+        } else if (node instanceof ForNode) {
             ForNode forNode = (ForNode) node;
-            // Execute initialization
             evaluate(forNode.initialization);
-            // Loop condition and increment
             while (isTrue(evaluate(forNode.condition))) {
-                // Execute loop body
                 executeBlock(forNode.body);
-                // Execute increment
                 evaluate(forNode.increment);
             }
-        } else if (node instanceof WhileNode) { // Handle WhileNode
+        } else if (node instanceof WhileNode) {
             WhileNode whileNode = (WhileNode) node;
             while (isTrue(evaluate(whileNode.condition))) {
                 executeBlock(whileNode.body);
@@ -90,63 +87,13 @@ public class Interpreter {
                 throw new RuntimeException("Input must be assigned to a variable.");
             }
             String varName = ((VariableNode) inputNode.variable).name;
-            // Check if variable is encrypted (starts with @ENC)
             boolean isEncrypted = false;
             String actualVarName = varName;
             if (varName.startsWith("@ENC")) {
                 isEncrypted = true;
-                actualVarName = varName.substring(4); // Remove @ENC
+                actualVarName = varName.substring(4);
             }
-            // Attempt to parse input as boolean, number, array, or else store as string
-            Object value;
-            if (userInput.equalsIgnoreCase("true") || userInput.equalsIgnoreCase("false")) {
-                value = Boolean.parseBoolean(userInput);
-            } else {
-                try {
-                    if (userInput.contains(".")) {
-                        value = Double.parseDouble(userInput);
-                    } else {
-                        value = Integer.parseInt(userInput);
-                    }
-                } catch (NumberFormatException e) {
-                    // Check if it's an array input, e.g., [1, 2, 3]
-                    userInput = userInput.trim();
-                    if (userInput.startsWith("[") && userInput.endsWith("]")) {
-                        // Simple array parsing
-                        String elementsStr = userInput.substring(1, userInput.length() - 1).trim();
-                        if (elementsStr.isEmpty()) {
-                            value = new ArrayList<Object>();
-                        } else {
-                            String[] elements = elementsStr.split(",");
-                            List<Object> list = new ArrayList<>();
-                            for (String elem : elements) {
-                                elem = elem.trim();
-                                if (elem.equalsIgnoreCase("true") || elem.equalsIgnoreCase("false")) {
-                                    list.add(Boolean.parseBoolean(elem));
-                                } else {
-                                    try {
-                                        if (elem.contains(".")) {
-                                            list.add(Double.parseDouble(elem));
-                                        } else {
-                                            list.add(Integer.parseInt(elem));
-                                        }
-                                    } catch (NumberFormatException ex) {
-                                        list.add(elem.replaceAll("^\"|\"$", "")); // Remove quotes if any
-                                    }
-                                }
-                            }
-                            value = list;
-                        }
-                    } else {
-                        // Treat as string, remove surrounding quotes if present
-                        if (userInput.startsWith("\"") && userInput.endsWith("\"")) {
-                            value = userInput.substring(1, userInput.length() - 1);
-                        } else {
-                            value = userInput;
-                        }
-                    }
-                }
-            }
+            Object value = parseInputValue(userInput);
             if (isEncrypted) {
                 String encryptedValue = encrypt(String.valueOf(value));
                 setVariable(actualVarName, encryptedValue, true);
@@ -154,7 +101,6 @@ public class Interpreter {
                 setVariable(actualVarName, value, false);
             }
         } else if (node instanceof ExpressionStatement) {
-            // Evaluate the expression statement, which may include assignments.
             evaluate(((ExpressionStatement) node).expr);
         } else if (node instanceof FunctionDefNode) {
             FunctionDefNode func = (FunctionDefNode) node;
@@ -163,6 +109,10 @@ public class Interpreter {
             ReturnNode ret = (ReturnNode) node;
             Object value = ret.value != null ? evaluate(ret.value) : null;
             throw new ReturnException(value);
+        } else if (node instanceof EventTriggerNode) {
+            EventTriggerNode etn = (EventTriggerNode) node;
+            Object timeVal = evaluate(etn.timeExpr);
+            scheduleEvent(timeVal, etn.unit, etn.action);
         } else {
             throw new RuntimeException("Unknown node type: " + node.getClass().getName());
         }
@@ -174,13 +124,51 @@ public class Interpreter {
         }
     }
 
-    public void debugPrintVariables() {
-        System.out.println("----DEBUG: CURRENT VARIABLES----");
-        Map<String, Variable> variables = callStack.peek();
-        for (Map.Entry<String, Variable> entry : variables.entrySet()) {
-            System.out.println(entry.getKey() + " = " + (entry.getValue().isEncrypted ? entry.getValue().value : entry.getValue().value));
+    private Object parseInputValue(String userInput) {
+        if (userInput.equalsIgnoreCase("true") || userInput.equalsIgnoreCase("false")) {
+            return Boolean.parseBoolean(userInput);
         }
-        System.out.println("--------------------------------");
+        try {
+            if (userInput.contains(".")) {
+                return Double.parseDouble(userInput);
+            } else {
+                return Integer.parseInt(userInput);
+            }
+        } catch (NumberFormatException e) {
+            userInput = userInput.trim();
+            if (userInput.startsWith("[") && userInput.endsWith("]")) {
+                String elementsStr = userInput.substring(1, userInput.length() - 1).trim();
+                if (elementsStr.isEmpty()) {
+                    return new ArrayList<Object>();
+                } else {
+                    String[] elements = elementsStr.split(",");
+                    List<Object> list = new ArrayList<>();
+                    for (String elem : elements) {
+                        elem = elem.trim();
+                        if (elem.equalsIgnoreCase("true") || elem.equalsIgnoreCase("false")) {
+                            list.add(Boolean.parseBoolean(elem));
+                        } else {
+                            try {
+                                if (elem.contains(".")) {
+                                    list.add(Double.parseDouble(elem));
+                                } else {
+                                    list.add(Integer.parseInt(elem));
+                                }
+                            } catch (NumberFormatException ex) {
+                                list.add(elem.replaceAll("^\"|\"$", ""));
+                            }
+                        }
+                    }
+                    return list;
+                }
+            } else {
+                if (userInput.startsWith("\"") && userInput.endsWith("\"")) {
+                    return userInput.substring(1, userInput.length() - 1);
+                } else {
+                    return userInput;
+                }
+            }
+        }
     }
 
     private TokenType operatorFromCompound(TokenType type) {
@@ -198,7 +186,6 @@ public class Interpreter {
         }
     }
 
-    // Overloaded evaluate method for different contexts
     private Object evaluate(Node node) {
         return evaluate(node, true);
     }
@@ -218,23 +205,16 @@ public class Interpreter {
             String actualVarName = varName;
             if (varName.startsWith("@ENC")) {
                 isEncrypted = true;
-                actualVarName = varName.substring(4); // Remove @ENC
+                actualVarName = varName.substring(4);
             }
             Optional<Variable> varOpt = getVariable(actualVarName);
             if (!varOpt.isPresent()) {
-                System.err.println("----DEBUG ERROR----");
-                System.err.println("Undefined variable access: " + varName);
-                System.err.println("------------------");
                 throw new RuntimeException("Undefined variable: " + varName);
             }
             Variable var = varOpt.get();
-            if (var.isEncrypted) {
-                if (decrypt) {
-                    String decryptedValue = decrypt(var.value.toString());
-                    return parseValue(decryptedValue);
-                } else {
-                    return var.value; // Return encrypted value
-                }
+            if (var.isEncrypted && decrypt) {
+                String decryptedValue = decrypt(var.value.toString());
+                return parseValue(decryptedValue);
             } else {
                 return var.value;
             }
@@ -245,24 +225,21 @@ public class Interpreter {
             String actualVarName = varName;
             if (varName.startsWith("@ENC")) {
                 isEncrypted = true;
-                actualVarName = varName.substring(4); // Remove @ENC
+                actualVarName = varName.substring(4);
             }
             Object rightVal = evaluate(assign.value, decrypt);
             if (assign.op == TokenType.ASSIGN) {
                 if (isEncrypted) {
                     String encryptedValue = encrypt(String.valueOf(rightVal));
                     setVariable(actualVarName, encryptedValue, true);
+                    return encryptedValue;
                 } else {
                     setVariable(actualVarName, rightVal, false);
+                    return rightVal;
                 }
-                return isEncrypted ? encrypt(String.valueOf(rightVal)) : rightVal;
             } else {
-                // Compound assignment
                 Optional<Variable> varOpt = getVariable(actualVarName);
                 if (!varOpt.isPresent()) {
-                    System.err.println("----DEBUG ERROR----");
-                    System.err.println("Attempting compound assignment on undefined variable: " + varName);
-                    System.err.println("------------------");
                     throw new RuntimeException("Undefined variable: " + varName);
                 }
                 Variable var = varOpt.get();
@@ -297,20 +274,16 @@ public class Interpreter {
                 String actualVarName = varName;
                 if (varName.startsWith("@ENC")) {
                     isEncrypted = true;
-                    actualVarName = varName.substring(4); // Remove @ENC
+                    actualVarName = varName.substring(4);
                 }
                 Optional<Variable> varOpt = getVariable(actualVarName);
                 if (!varOpt.isPresent()) {
-                    System.err.println("----DEBUG ERROR----");
-                    System.err.println("Undefined variable in postfix operation: " + varName);
-                    System.err.println("------------------");
                     throw new RuntimeException("Undefined variable: " + varName);
                 }
                 Variable var = varOpt.get();
                 Object val;
                 if (var.isEncrypted) {
-                    String decryptedValue = decrypt(var.value.toString());
-                    val = parseValue(decryptedValue);
+                    val = parseValue(decrypt(var.value.toString()));
                 } else {
                     val = var.value;
                 }
@@ -333,20 +306,16 @@ public class Interpreter {
                     String actualVarName = varName;
                     if (varName.startsWith("@ENC")) {
                         isEncrypted = true;
-                        actualVarName = varName.substring(4); // Remove @ENC
+                        actualVarName = varName.substring(4);
                     }
                     Optional<Variable> varOpt = getVariable(actualVarName);
                     if (!varOpt.isPresent()) {
-                        System.err.println("----DEBUG ERROR----");
-                        System.err.println("Undefined variable in prefix operation: " + varName);
-                        System.err.println("------------------");
                         throw new RuntimeException("Undefined variable: " + varName);
                     }
                     Variable var = varOpt.get();
                     Object val;
                     if (var.isEncrypted) {
-                        String decryptedValue = decrypt(var.value.toString());
-                        val = parseValue(decryptedValue);
+                        val = parseValue(decrypt(var.value.toString()));
                     } else {
                         val = var.value;
                     }
@@ -373,27 +342,21 @@ public class Interpreter {
             if (call.arguments.size() != func.parameters.size()) {
                 throw new RuntimeException("Function " + call.name + " expects " + func.parameters.size() + " arguments but got " + call.arguments.size());
             }
-
-            // Evaluate arguments
             List<Object> argValues = new ArrayList<>();
             for (Node arg : call.arguments) {
                 argValues.add(evaluate(arg, decrypt));
             }
-
-            // Create a new scope for function
             Map<String, Variable> localScope = new HashMap<>();
             for (int i = 0; i < func.parameters.size(); i++) {
                 localScope.put(func.parameters.get(i), new Variable(argValues.get(i), false));
             }
             callStack.push(localScope);
-
             try {
                 executeBlock(func.body);
             } catch (ReturnException re) {
                 callStack.pop();
                 return re.value;
             }
-
             callStack.pop();
             return null;
         } else if (node instanceof ReturnNode) {
@@ -406,7 +369,6 @@ public class Interpreter {
     }
 
     private Object evaluateForPrint(Node node) {
-        // Evaluates the node without decrypting encrypted variables
         return evaluate(node, false);
     }
 
@@ -423,7 +385,6 @@ public class Interpreter {
     }
 
     private Object applyOp(Object left, Object right, TokenType op) {
-        // Handle different types: number, string, boolean, array
         if (op == TokenType.PLUS && (left instanceof String || right instanceof String)) {
             return String.valueOf(left) + String.valueOf(right);
         }
@@ -446,39 +407,29 @@ public class Interpreter {
 
         switch (op) {
             case PLUS:
-                if (left instanceof List && right instanceof List) {
-                    List<Object> combined = new ArrayList<>((List<Object>) left);
-                    combined.addAll((List<Object>) right);
-                    return combined;
-                }
-                return isInteger(l) && isInteger(r) ? (int) (l + r) : (l + r);
+                if (isInteger(l) && isInteger(r)) return (int)(l+r);
+                return (l+r);
             case MINUS:
-                return isInteger(l) && isInteger(r) ? (int) (l - r) : (l - r);
+                if (isInteger(l) && isInteger(r)) return (int)(l-r);
+                return (l-r);
             case STAR:
-                return isInteger(l) && isInteger(r) ? (int) (l * r) : (l * r);
+                if (isInteger(l) && isInteger(r)) return (int)(l*r);
+                return (l*r);
             case SLASH:
                 if (r == 0) {
-                    System.err.println("----DEBUG ERROR----");
-                    System.err.println("Division by zero");
-                    System.err.println("------------------");
                     throw new RuntimeException("Division by zero");
                 }
-                return isInteger(l) && isInteger(r) ? (int) (l / r) : (l / r);
+                if (isInteger(l) && isInteger(r)) return (int)(l/r);
+                return (l/r);
             case MOD:
                 if (r == 0) {
-                    System.err.println("----DEBUG ERROR----");
-                    System.err.println("Division by zero in modulo");
-                    System.err.println("------------------");
                     throw new RuntimeException("Division by zero");
                 }
-                if (left instanceof List || right instanceof List) {
-                    throw new RuntimeException("Modulo operator cannot be applied to arrays.");
-                }
-                return (int) l % (int) r;
+                return (int)l % (int)r;
             case EQ_EQ:
-                return equalsValue(l, r);
+                return l == r;
             case NOT_EQ:
-                return !equalsValue(l, r);
+                return l != r;
             case GT:
                 return l > r;
             case LT:
@@ -492,9 +443,6 @@ public class Interpreter {
             case OR_OR:
                 return isTrue(left) || isTrue(right);
             default:
-                System.err.println("----DEBUG ERROR----");
-                System.err.println("Unsupported operator: " + op);
-                System.err.println("------------------");
                 throw new RuntimeException("Unsupported operator: " + op);
         }
     }
@@ -511,33 +459,12 @@ public class Interpreter {
         return val != null;
     }
 
-    private boolean equalsValue(double l, double r) {
-        return l == r;
-    }
-
     private double toNumber(Object val) {
         if (val instanceof Number)
             return ((Number) val).doubleValue();
         if (val instanceof String) {
             try {
                 return Double.parseDouble((String) val);
-            } catch (NumberFormatException e) {
-                return 0;
-            }
-        }
-        if (val instanceof Boolean)
-            return (Boolean) val ? 1 : 0;
-        return 0;
-    }
-
-    private int toInteger(Object val) {
-        if (val instanceof Integer)
-            return (Integer) val;
-        if (val instanceof Double)
-            return (int) ((Double) val).doubleValue();
-        if (val instanceof String) {
-            try {
-                return Integer.parseInt((String) val);
             } catch (NumberFormatException e) {
                 return 0;
             }
@@ -567,11 +494,9 @@ public class Interpreter {
                 return;
             }
         }
-        // If variable not found in any scope, set in current (top) scope
         callStack.peek().put(name, new Variable(value, isEncrypted));
     }
 
-    // Function to call a function externally (optional)
     public Object callFunction(String name, List<Object> args) {
         FunctionDefNode func = functions.get(name);
         if (func == null) {
@@ -581,7 +506,6 @@ public class Interpreter {
             throw new RuntimeException("Function " + name + " expects " + func.parameters.size() + " arguments but got " + args.size());
         }
 
-        // Create a new scope for function
         Map<String, Variable> localScope = new HashMap<>();
         for (int i = 0; i < func.parameters.size(); i++) {
             localScope.put(func.parameters.get(i), new Variable(args.get(i), false));
@@ -599,7 +523,6 @@ public class Interpreter {
         return null;
     }
 
-    // Encryption function using AES
     private String encrypt(String value) {
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -613,7 +536,6 @@ public class Interpreter {
         }
     }
 
-    // Decryption function using AES
     private String decrypt(String encrypted) {
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -628,25 +550,20 @@ public class Interpreter {
         }
     }
 
-    // Parse decrypted string back to its original type
     private Object parseValue(String value) {
-        // Attempt to parse as boolean
         if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
             return Boolean.parseBoolean(value);
         }
-        // Attempt to parse as integer
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            // Not an integer
+            // not int
         }
-        // Attempt to parse as double
         try {
             return Double.parseDouble(value);
         } catch (NumberFormatException e) {
-            // Not a double
+            // not double
         }
-        // Attempt to parse as array (simple parsing)
         value = value.trim();
         if (value.startsWith("[") && value.endsWith("]")) {
             String elementsStr = value.substring(1, value.length() - 1).trim();
@@ -667,14 +584,65 @@ public class Interpreter {
                                 list.add(Integer.parseInt(elem));
                             }
                         } catch (NumberFormatException ex) {
-                            list.add(elem.replaceAll("^\"|\"$", "")); // Remove quotes if any
+                            list.add(elem.replaceAll("^\"|\"$", ""));
                         }
                     }
                 }
                 return list;
             }
         }
-        // Else, treat as string
         return value;
+    }
+
+    private void scheduleEvent(Object timeVal, String unit, Node action) {
+        if (unit != null) {
+            double val = toNumber(timeVal);
+            long delayMillis;
+            switch (unit.toLowerCase()) {
+                case "seconds": delayMillis = (long)(val * 1000); break;
+                case "minutes": delayMillis = (long)(val * 60 * 1000); break;
+                case "hours": delayMillis = (long)(val * 3600 * 1000); break;
+                default:
+                    throw new RuntimeException("Unknown time unit: " + unit);
+            }
+            // Schedule repeating event every delayMillis
+            new Timer().schedule(
+                new TimerTask() {
+                    public void run() {
+                        executeNode(action);
+                    }
+                },
+                delayMillis,
+                delayMillis
+            );
+        } else {
+            // timeVal should be a datetime string
+            if (!(timeVal instanceof String)) {
+                throw new RuntimeException("DateTime trigger must be a string in format 'YYYY-MM-DD HH:MM:SS'");
+            }
+            String dateTimeStr = (String) timeVal;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime targetTime;
+            try {
+                targetTime = LocalDateTime.parse(dateTimeStr, formatter);
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid datetime format. Use 'YYYY-MM-DD HH:mm:ss'");
+            }
+
+            long targetMillis = targetTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long delay = targetMillis - System.currentTimeMillis();
+            if (delay < 0) {
+                throw new RuntimeException("Target time is in the past.");
+            }
+            // Schedule once
+            new Timer().schedule(
+                new TimerTask() {
+                    public void run() {
+                        executeNode(action);
+                    }
+                },
+                delay
+            );
+        }
     }
 }

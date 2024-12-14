@@ -1,5 +1,3 @@
-// Parser.java
-
 import java.util.*;
 
 abstract class Node {}
@@ -84,7 +82,7 @@ class ExpressionStatement extends Node {
     }
 }
 
-class ForNode extends Node { // New node for standard for loops
+class ForNode extends Node {
     Node initialization;
     Node condition;
     Node increment;
@@ -148,12 +146,24 @@ class ReturnNode extends Node {
     }
 }
 
-// New ArrayLiteralNode
 class ArrayLiteralNode extends Node {
     List<Node> elements;
 
     ArrayLiteralNode(List<Node> elements) {
         this.elements = elements;
+    }
+}
+
+// New node for event triggers
+class EventTriggerNode extends Node {
+    Node timeExpr;
+    String unit; // null if datetime trigger
+    Node action;
+
+    EventTriggerNode(Node timeExpr, String unit, Node action) {
+        this.timeExpr = timeExpr;
+        this.unit = unit;
+        this.action = action;
     }
 }
 
@@ -244,13 +254,16 @@ public class Parser {
             return parseInput();
         }
 
+        if (match(TokenType.EVENT_TRIGGER)) {
+            return parseEventTrigger();
+        }
+
         Node expr = parseExpression();
         consume(TokenType.SEMICOLON, "Expect ';' after expression.");
         return new ExpressionStatement(expr);
     }
 
     private Node parseFunctionDef() {
-        // Syntax: function fname(param1, param2, ...) { body };
         Token nameToken = consume(TokenType.IDENTIFIER, "Expect function name.");
         String name = nameToken.lexeme;
 
@@ -272,8 +285,6 @@ public class Parser {
     }
 
     private Node parseReturn() {
-        // Syntax: return expr;
-        Token returnToken = previous();
         Node value = null;
         if (!check(TokenType.SEMICOLON)) {
             value = parseExpression();
@@ -283,7 +294,6 @@ public class Parser {
     }
 
     private Node parseFor() {
-        // Syntax: for (initialization; condition; increment) { body }
         consume(TokenType.LPAREN, "Expect '(' after 'for'.");
         Node initialization = parseExpression();
         consume(TokenType.SEMICOLON, "Expect ';' after for initialization.");
@@ -298,7 +308,6 @@ public class Parser {
     }
 
     private Node parseWhile() {
-        // Syntax: while (condition) { body }
         consume(TokenType.LPAREN, "Expect '(' after 'while'.");
         Node condition = parseExpression();
         consume(TokenType.RPAREN, "Expect ')' after while condition.");
@@ -309,7 +318,6 @@ public class Parser {
     }
 
     private Node parseIf() {
-        // Syntax: if (condition) { ifBranch } else { elseBranch }
         consume(TokenType.LPAREN, "Expect '(' after 'if'.");
         Node condition = parseExpression();
         consume(TokenType.RPAREN, "Expect ')' after if condition.");
@@ -326,7 +334,6 @@ public class Parser {
     }
 
     private Node parsePrint() {
-        // Syntax: print-> expression;
         consume(TokenType.ARROW, "Expect '->' after 'print'.");
         Node expr = parseExpression();
         consume(TokenType.SEMICOLON, "Expect ';' after print statement.");
@@ -334,13 +341,35 @@ public class Parser {
     }
 
     private Node parseInput() {
-        // Syntax: input-> prompt -> variable;
         consume(TokenType.ARROW, "Expect '->' after 'input'.");
         Node prompt = parseExpression();
         consume(TokenType.ARROW, "Expect '->' before variable in input statement.");
         Node variable = parseExpression();
         consume(TokenType.SEMICOLON, "Expect ';' after input statement.");
         return new InputNode(prompt, variable);
+    }
+
+    private Node parseEventTrigger() {
+        // Syntax:
+        // @EVENT_TRIGGER(duration,'seconds') -> statement;
+        // @EVENT_TRIGGER(YYYY-MM-DD HH:MM:SS) -> statement;
+
+        consume(TokenType.LPAREN, "Expect '(' after @EVENT_TRIGGER.");
+
+        Node timeNode = parseExpression();
+        String unit = null;
+
+        if (match(TokenType.COMMA)) {
+            Token unitToken = consume(TokenType.STRING, "Expect a time unit as a string.");
+            unit = unitToken.lexeme;
+        }
+
+        consume(TokenType.RPAREN, "Expect ')' after event trigger time.");
+        consume(TokenType.ARROW, "Expect '->' after event trigger declaration.");
+
+        Node action = parseStatement();
+
+        return new EventTriggerNode(timeNode, unit, action);
     }
 
     private List<Node> parseBlock() {
@@ -469,7 +498,6 @@ public class Parser {
         if (match(TokenType.IDENTIFIER)) {
             String name = previous().lexeme;
             if (match(TokenType.LPAREN)) {
-                // Function call
                 List<Node> args = new ArrayList<>();
                 if (!match(TokenType.RPAREN)) {
                     do {
@@ -489,7 +517,6 @@ public class Parser {
         }
 
         if (match(TokenType.LBRACKET)) {
-            // Array literal
             List<Node> elements = new ArrayList<>();
             if (!match(TokenType.RBRACKET)) {
                 do {

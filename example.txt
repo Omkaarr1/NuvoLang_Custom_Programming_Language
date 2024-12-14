@@ -1,5 +1,3 @@
-// example.txt
-
 // Variable assignments and arithmetic
 x = 10;
 x = x + 5;
@@ -83,8 +81,9 @@ print->"Result after computation: " + result;
 // Printing encrypted variable again
 print->"Encrypted secret number after computation: " + @ENCsecretNumber;
 
+// Time-based triggers (will print "Hello" every 5 seconds)
+@EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
 
-// Done
-print->"Done";
-
-
+// One-time future event trigger example (replace with a future date/time as desired)
+// Format: YYYY-MM-DD HH:MM:SS
+@EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";

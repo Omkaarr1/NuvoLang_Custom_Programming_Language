@@ -1,5 +1,3 @@
-// Main.java
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -18,13 +16,6 @@ public class Main {
             Lexer lexer = new Lexer(inputCode);
             List<Token> tokens = lexer.tokenize();
 
-            // Debug: Print Tokens (Optional)
-            /*
-            for (Token token : tokens) {
-                System.out.println(token);
-            }
-            */
-
             // Initialize Parser
             Parser parser = new Parser(tokens);
             List<Node> statements = parser.parse();
@@ -35,9 +26,6 @@ public class Main {
             // Execute statements
             interpreter.execute(statements);
 
-            // Optionally, print final variables for debugging
-            // interpreter.debugPrintVariables();
-
         } catch (RuntimeException e) {
             System.err.println("Error: " + e.getMessage());
         } catch (IOException e) {
@@ -45,13 +33,6 @@ public class Main {
         }
     }
 
-    /**
-     * Reads the entire content of the specified file and returns it as a String.
-     *
-     * @param filename The path to the input file.
-     * @return The content of the file as a String.
-     * @throws IOException If an I/O error occurs reading from the file.
-     */
     private static String readInput(String filename) throws IOException {
         return new String(Files.readAllBytes(Paths.get(filename)));
     }
