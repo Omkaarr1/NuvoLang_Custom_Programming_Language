@@ -82,8 +82,10 @@ print->"Result after computation: " + result;
 print->"Encrypted secret number after computation: " + @ENCsecretNumber;
 
 // Time-based triggers (will print "Hello" every 5 seconds)
-@EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
+// @EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
 
+// Time-based triggers (runs "Hello" every 5 seconds for 10 times)
+ @EVENT_TRIGGER(1,"seconds",2) -> print->"Hello from time-based event!";
 // One-time future event trigger example (replace with a future date/time as desired)
 // Format: YYYY-MM-DD HH:MM:SS
 @EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";

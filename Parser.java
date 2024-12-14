@@ -159,11 +159,17 @@ class EventTriggerNode extends Node {
     Node timeExpr;
     String unit; // null if datetime trigger
     Node action;
+    Node timesExpr; // null if not provided
 
     EventTriggerNode(Node timeExpr, String unit, Node action) {
+        this(timeExpr, unit, action, null);
+    }
+
+    EventTriggerNode(Node timeExpr, String unit, Node action, Node timesExpr) {
         this.timeExpr = timeExpr;
         this.unit = unit;
         this.action = action;
+        this.timesExpr = timesExpr;
     }
 }
 
@@ -350,27 +356,33 @@ public class Parser {
     }
 
     private Node parseEventTrigger() {
-        // Syntax:
-        // @EVENT_TRIGGER(duration,'seconds') -> statement;
-        // @EVENT_TRIGGER(YYYY-MM-DD HH:MM:SS) -> statement;
-
+        // @EVENT_TRIGGER(duration,"seconds",times) -> statement;
+        // @EVENT_TRIGGER("YYYY-MM-DD HH:MM:SS") -> statement;
+    
         consume(TokenType.LPAREN, "Expect '(' after @EVENT_TRIGGER.");
-
+    
         Node timeNode = parseExpression();
         String unit = null;
-
+        Node timesNode = null;
+    
+        // Check if we have a comma indicating a unit
         if (match(TokenType.COMMA)) {
             Token unitToken = consume(TokenType.STRING, "Expect a time unit as a string.");
             unit = unitToken.lexeme;
+    
+            // Check if we have another comma indicating the times parameter
+            if (match(TokenType.COMMA)) {
+                // times should be a number
+                timesNode = parseExpression();
+            }
         }
-
+    
         consume(TokenType.RPAREN, "Expect ')' after event trigger time.");
         consume(TokenType.ARROW, "Expect '->' after event trigger declaration.");
-
+    
         Node action = parseStatement();
-
-        return new EventTriggerNode(timeNode, unit, action);
-    }
+        return new EventTriggerNode(timeNode, unit, action, timesNode);
+    }    
 
     private List<Node> parseBlock() {
         List<Node> statements = new ArrayList<>();
