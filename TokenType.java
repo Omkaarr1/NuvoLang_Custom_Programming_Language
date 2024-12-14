@@ -18,9 +18,8 @@ public enum TokenType {
     // Keywords
     PRINT, IF, ELSE, FOR, TO, INPUT, WHILE,
     FUNCTION, RETURN,
-
-    // Event trigger
     EVENT_TRIGGER,
+    USE, // Newly added keyword for imports
 
     // End of file
     EOF,

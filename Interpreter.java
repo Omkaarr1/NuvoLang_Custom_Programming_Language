@@ -7,6 +7,23 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 
+import weka.core.Instances;
+import weka.core.Attribute;
+import weka.core.converters.CSVLoader;
+import weka.classifiers.trees.RandomForest;
+import weka.classifiers.functions.LinearRegression;
+import weka.clusterers.SimpleKMeans;
+import weka.classifiers.Evaluation;
+import weka.clusterers.ClusterEvaluation;
+import weka.core.SerializationHelper;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.NumericToNominal;
+import weka.filters.unsupervised.attribute.StringToNominal;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+
 class ReturnException extends RuntimeException {
     public final Object value;
 
@@ -74,13 +91,14 @@ public class Interpreter {
             }
         } else if (node instanceof InputNode) {
             InputNode inputNode = (InputNode) node;
-            Object promptObj = evaluate(((InputNode) node).prompt);
+            Object promptObj = evaluate(inputNode.prompt);
             if (!(promptObj instanceof String)) {
                 throw new RuntimeException("Input prompt must be a string.");
             }
             String prompt = (String) promptObj;
             System.out.print(prompt + " ");
             String userInput = scanner.nextLine();
+
             if (!(inputNode.variable instanceof VariableNode)) {
                 throw new RuntimeException("Input must be assigned to a variable.");
             }
@@ -110,16 +128,14 @@ public class Interpreter {
         } else if (node instanceof EventTriggerNode) {
             EventTriggerNode etn = (EventTriggerNode) node;
             Object timeVal = evaluate(etn.timeExpr);
-            // Currently hard-coded to null:
-            // scheduleEvent(timeVal, etn.unit, etn.action, null);
-
-            // UPDATED CODE:
             Object timesVal = null;
             if (etn.timesExpr != null) {
                 timesVal = evaluate(etn.timesExpr);
             }
-
             scheduleEvent(timeVal, etn.unit, etn.action, timesVal);
+        } else if (node instanceof UseNode) {
+            UseNode useNode = (UseNode) node;
+            loadLibrary(useNode.libraryName);
         } else {
             throw new RuntimeException("Unknown node type: " + node.getClass().getName());
         }
@@ -371,9 +387,57 @@ public class Interpreter {
             ReturnNode ret = (ReturnNode) node;
             Object value = ret.value != null ? evaluate(ret.value, decrypt) : null;
             throw new ReturnException(value);
+        } else if (node instanceof ObjectMethodCallNode) {
+            ObjectMethodCallNode om = (ObjectMethodCallNode) node;
+            Object targetVal = evaluate(om.target, decrypt);
+            List<Object> argVals = new ArrayList<>();
+            for (Node arg : om.arguments) {
+                argVals.add(evaluate(arg, decrypt));
+            }
+            return callObjectMethod(targetVal, om.methodName, argVals);
         }
 
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
+    }
+
+    private void loadLibrary(String name) {
+        if (name.equals("ml")) {
+            setVariable("ml", new MlLibrary(), false);
+        } else {
+            throw new RuntimeException("Unknown library: " + name);
+        }
+    }
+
+    private Object callObjectMethod(Object target, String methodName, List<Object> args) {
+        if (target instanceof MlLibrary) {
+            MlLibrary ml = (MlLibrary) target;
+            switch (methodName) {
+                case "randomforest":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.randomforest((String) args.get(0));
+                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                        return ml.randomforest((String) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.randomforest");
+                    }
+                case "linearregression":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.linearregression((String) args.get(0));
+                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                        return ml.linearregression((String) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.linearregression");
+                    }
+                case "kmeans":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.kmeans((String) args.get(0));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.kmeans");
+                    }
+                // Add more methods as needed
+            }
+        }
+        throw new RuntimeException("Unknown method " + methodName + " on object " + target);
     }
 
     private Object evaluateForPrint(Node node) {
@@ -616,7 +680,6 @@ public class Interpreter {
             }
         }
 
-        // If this is a time-based (seconds, minutes, hours) trigger
         if (unit != null) {
             double val = toNumber(timeVal);
             long delayMillis;
@@ -634,7 +697,6 @@ public class Interpreter {
                     throw new RuntimeException("Unknown time unit: " + unit);
             }
 
-            // If times is -1, run indefinitely using a repeating schedule
             if (times == -1) {
                 Timer timer = new Timer();
                 timer.schedule(new TimerTask() {
@@ -644,14 +706,12 @@ public class Interpreter {
                     }
                 }, delayMillis, delayMillis);
             } else {
-                // If we have a limited number of runs, use a recursive scheduling approach
                 runLimitedTimes(action, delayMillis, times);
             }
 
         } else {
-            // This is a datetime-based trigger
             if (!(timeVal instanceof String)) {
-                throw new RuntimeException("DateTime trigger must be a string in the format 'YYYY-MM-DD HH:mm:ss'");
+                throw new RuntimeException("DateTime trigger must be a string in 'YYYY-MM-DD HH:mm:ss' format");
             }
             String dateTimeStr = (String) timeVal;
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -668,13 +728,10 @@ public class Interpreter {
                 throw new RuntimeException("Target time is in the past.");
             }
 
-            // For datetime triggers, we only run once. If timesVal was provided, it's not
-            // supported.
             if (timesVal != null) {
                 throw new RuntimeException("Times parameter not supported for datetime triggers.");
             }
 
-            // Schedule a single execution at the given future time
             new Timer().schedule(new TimerTask() {
                 @Override
                 public void run() {
@@ -684,36 +741,195 @@ public class Interpreter {
         }
     }
 
-    /**
-     * Recursively schedules a single-run task until the specified number of times
-     * is reached.
-     * 
-     * @param action        The node action to execute each run.
-     * @param delayMillis   The delay/interval in milliseconds between runs.
-     * @param remainingRuns How many more times to run.
-     */
     private void runLimitedTimes(Node action, long delayMillis, int remainingRuns) {
-        if (remainingRuns <= 0) return; // No runs left
-    
+        if (remainingRuns <= 0) return;
+
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                // Execute the action this run
                 executeNode(action);
-    
-                // Decrement the run count
                 int nextRunCount = remainingRuns - 1;
-    
                 if (nextRunCount > 0) {
-                    // Still have runs left, schedule again
                     runLimitedTimes(action, delayMillis, nextRunCount);
                 } else {
-                    // No runs left, exit the program
                     System.exit(0);
                 }
             }
         }, delayMillis);
     }
-    
+}
+
+class MlLibrary {
+    private Instances loadData(String csv, String targetColumn) throws IOException, Exception {
+        CSVLoader loader = new CSVLoader();
+        loader.setSource(new File(csv));
+        Instances data = loader.getDataSet();
+
+        if (targetColumn != null && !targetColumn.isEmpty()) {
+            int targetIndex = -1;
+            for (int i = 0; i < data.numAttributes(); i++) {
+                Attribute attr = data.attribute(i);
+                if (attr.name().equalsIgnoreCase(targetColumn)) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+            if (targetIndex == -1) {
+                throw new RuntimeException("Column '" + targetColumn + "' not found in the dataset.");
+            }
+            data.setClassIndex(targetIndex);
+        } else {
+            data.setClassIndex(data.numAttributes() - 1);
+        }
+
+        // Convert any string attributes to nominal
+        StringToNominal stn = new StringToNominal();
+        stn.setAttributeRange("first-last");
+        stn.setInputFormat(data);
+        data = Filter.useFilter(data, stn);
+
+        return data;
+    }
+
+    public Object randomforest(String csv) {
+        return randomforest(csv, null);
+    }
+
+    public Object randomforest(String csv, String column) {
+        try {
+            Instances data = loadData(csv, column);
+
+            // If class attribute is not nominal, try converting it.
+            if (!data.classAttribute().isNominal()) {
+                System.out.println("[ml] Class attribute is not nominal. Attempting NumericToNominal...");
+                NumericToNominal convert = new NumericToNominal();
+                convert.setAttributeIndices(String.valueOf(data.classIndex() + 1));
+                convert.setInputFormat(data);
+                data = Filter.useFilter(data, convert);
+
+                if (!data.classAttribute().isNominal()) {
+                    System.out.println("[ml] Failed to convert class attribute to nominal. Metrics won't be printed.");
+                } else {
+                    System.out.println("[ml] Successfully converted class attribute to nominal.");
+                }
+            }
+
+            RandomForest rf = new RandomForest();
+            rf.buildClassifier(data);
+            System.out.println("[ml] Random Forest trained on " + csv +
+                (column != null ? " with target column '" + column + "'" : ""));
+            System.out.println("[ml] Model Summary:\n" + rf.toString());
+
+            Evaluation eval = new Evaluation(data);
+            eval.crossValidateModel(rf, data, 10, new Random(1));
+
+            if (data.classAttribute().isNominal()) {
+                double accuracy = eval.pctCorrect();
+                System.out.println("[ml] Accuracy: " + accuracy + "%");
+
+                for (int i = 0; i < data.numClasses(); i++) {
+                    double precision = eval.precision(i);
+                    double recall = eval.recall(i);
+                    double f1 = eval.fMeasure(i);
+                    String className = data.classAttribute().value(i);
+                    System.out.println("[ml] Class: " + className);
+                    System.out.println("    Precision: " + precision);
+                    System.out.println("    Recall: " + recall);
+                    System.out.println("    F1-Score: " + f1);
+                }
+            } else {
+                System.out.println("[ml] Class is not nominal, no accuracy/precision/F1 printed.");
+            }
+
+            SerializationHelper.write("randomforest.model", rf);
+            System.out.println("[ml] Random Forest model saved to 'randomforest.model'");
+
+            return rf;
+        } catch (Exception e) {
+            throw new RuntimeException("Error training Random Forest: " + e.getMessage(), e);
+        }
+    }
+
+    public Object linearregression(String csv) {
+        return linearregression(csv, null);
+    }
+
+    public Object linearregression(String csv, String column) {
+        try {
+            Instances data = loadData(csv, column);
+
+            if (!data.classAttribute().isNumeric()) {
+                System.out.println("[ml] Warning: The class attribute is not numeric. Linear Regression is intended for numeric targets.");
+            }
+
+            LinearRegression lr = new LinearRegression();
+            lr.buildClassifier(data);
+            System.out.println("[ml] Linear Regression trained on " + csv +
+                (column != null ? " with target column '" + column + "'" : ""));
+            System.out.println("[ml] Model Coefficients:\n" + lr);
+
+            Evaluation eval = new Evaluation(data);
+            eval.crossValidateModel(lr, data, 10, new Random(1));
+
+            double corrCoef = eval.correlationCoefficient();
+            double mae = eval.meanAbsoluteError();
+            double rmse = eval.rootMeanSquaredError();
+
+            System.out.println("[ml] Correlation Coefficient: " + corrCoef);
+            System.out.println("[ml] Mean Absolute Error: " + mae);
+            System.out.println("[ml] Root Mean Squared Error: " + rmse);
+
+            SerializationHelper.write("linearregression.model", lr);
+            System.out.println("[ml] Linear Regression model saved to 'linearregression.model'");
+
+            return lr;
+        } catch (Exception e) {
+            throw new RuntimeException("Error training Linear Regression: " + e.getMessage(), e);
+        }
+    }
+
+    public Object kmeans(String csv) {
+        try {
+            CSVLoader loader = new CSVLoader();
+            loader.setSource(new File(csv));
+            Instances data = loader.getDataSet();
+
+            // Convert any string attributes to nominal for k-means
+            StringToNominal stn = new StringToNominal();
+            stn.setAttributeRange("first-last");
+            stn.setInputFormat(data);
+            data = Filter.useFilter(data, stn);
+
+            SimpleKMeans kmeans = new SimpleKMeans();
+            kmeans.setNumClusters(3);
+            kmeans.buildClusterer(data);
+            System.out.println("[ml] K-Means clustering on " + csv + " completed.");
+            System.out.println("[ml] Cluster centroids: \n" + kmeans.toString());
+
+            ClusterEvaluation clusterEval = new ClusterEvaluation();
+            clusterEval.setClusterer(kmeans);
+            clusterEval.evaluateClusterer(data);
+
+            System.out.println("[ml] Number of clusters: " + kmeans.getNumClusters());
+
+            int[] assignments = kmeans.getAssignments();
+            int[] clusterCounts = new int[kmeans.getNumClusters()];
+            for (int i = 0; i < assignments.length; i++) {
+                clusterCounts[assignments[i]]++;
+            }
+            for (int i = 0; i < clusterCounts.length; i++) {
+                System.out.println("[ml] Cluster " + i + ": " + clusterCounts[i] + " instances");
+            }
+
+            System.out.println("[ml] Note: Accuracy, Precision, and F1-Score are not applicable for clustering.");
+
+            SerializationHelper.write("kmeans.model", kmeans);
+            System.out.println("[ml] K-Means model saved to 'kmeans.model'");
+
+            return kmeans;
+        } catch (Exception e) {
+            throw new RuntimeException("Error performing K-Means: " + e.getMessage(), e);
+        }
+    }
 }

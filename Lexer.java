@@ -56,6 +56,10 @@ public class Lexer {
                 case '\t':
                 case '\r':
                 case '\n':
+                    // Skip whitespace
+                    break;
+                case '.':
+                    tokens.add(new Token(TokenType.DOT, ".", startLine, startColumn));
                     break;
                 case '+':
                     if (match('+')) {
@@ -88,6 +92,7 @@ public class Lexer {
                     if (match('=')) {
                         tokens.add(new Token(TokenType.SLASH_EQ, "/=", startLine, startColumn));
                     } else if (match('/')) {
+                        // Comment, consume until end of line
                         while (!isAtEnd() && peek() != '\n') advance();
                     } else {
                         tokens.add(new Token(TokenType.SLASH, "/", startLine, startColumn));
@@ -196,7 +201,6 @@ public class Lexer {
         }
         String word = sb.toString();
 
-        // Check if identifier starts with @ENC
         boolean isEncrypted = false;
         String actualName = word;
         if (word.startsWith("@ENC")) {
@@ -209,31 +213,20 @@ public class Lexer {
             return new Token(TokenType.EVENT_TRIGGER, word, startLine, startColumn);
         }
 
-        switch (actualName) {
-            case "print":
-                return new Token(TokenType.PRINT, word, startLine, startColumn);
-            case "if":
-                return new Token(TokenType.IF, word, startLine, startColumn);
-            case "else":
-                return new Token(TokenType.ELSE, word, startLine, startColumn);
-            case "for":
-                return new Token(TokenType.FOR, word, startLine, startColumn);
-            case "to":
-                return new Token(TokenType.TO, word, startLine, startColumn);
-            case "input":
-                return new Token(TokenType.INPUT, word, startLine, startColumn);
-            case "while":
-                return new Token(TokenType.WHILE, word, startLine, startColumn);
-            case "function":
-                return new Token(TokenType.FUNCTION, word, startLine, startColumn);
-            case "return":
-                return new Token(TokenType.RETURN, word, startLine, startColumn);
-            case "true":
-            case "false":
-                return new Token(TokenType.BOOLEAN, word, startLine, startColumn);
-            default:
-                return new Token(TokenType.IDENTIFIER, word, startLine, startColumn);
-        }
+        // Additional keywords
+        if (actualName.equals("use")) return new Token(TokenType.USE, word, startLine, startColumn);
+        if (actualName.equals("print")) return new Token(TokenType.PRINT, word, startLine, startColumn);
+        if (actualName.equals("if")) return new Token(TokenType.IF, word, startLine, startColumn);
+        if (actualName.equals("else")) return new Token(TokenType.ELSE, word, startLine, startColumn);
+        if (actualName.equals("for")) return new Token(TokenType.FOR, word, startLine, startColumn);
+        if (actualName.equals("to")) return new Token(TokenType.TO, word, startLine, startColumn);
+        if (actualName.equals("input")) return new Token(TokenType.INPUT, word, startLine, startColumn);
+        if (actualName.equals("while")) return new Token(TokenType.WHILE, word, startLine, startColumn);
+        if (actualName.equals("function")) return new Token(TokenType.FUNCTION, word, startLine, startColumn);
+        if (actualName.equals("return")) return new Token(TokenType.RETURN, word, startLine, startColumn);
+        if (actualName.equals("true") || actualName.equals("false")) return new Token(TokenType.BOOLEAN, word, startLine, startColumn);
+
+        return new Token(TokenType.IDENTIFIER, word, startLine, startColumn);
     }
 
     private Token numberToken(char first, int startLine, int startColumn) {
@@ -269,7 +262,7 @@ public class Lexer {
                 sb.append(c);
             }
         }
-        if (!isAtEnd()) advance();
+        if (!isAtEnd()) advance(); // consume the closing quote
         else {
             throw new RuntimeException("Unterminated string literal at line " + line + ", column " + column);
         }

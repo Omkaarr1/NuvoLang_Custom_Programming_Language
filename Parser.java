@@ -173,6 +173,25 @@ class EventTriggerNode extends Node {
     }
 }
 
+class UseNode extends Node {
+    String libraryName;
+    UseNode(String libraryName) {
+        this.libraryName = libraryName;
+    }
+}
+
+class ObjectMethodCallNode extends Node {
+    Node target;
+    String methodName;
+    List<Node> arguments;
+
+    ObjectMethodCallNode(Node target, String methodName, List<Node> arguments) {
+        this.target = target;
+        this.methodName = methodName;
+        this.arguments = arguments;
+    }
+}
+
 public class Parser {
     private final List<Token> tokens;
     private int current = 0;
@@ -264,9 +283,19 @@ public class Parser {
             return parseEventTrigger();
         }
 
+        if (match(TokenType.USE)) {
+            return parseUseStatement();
+        }
+
         Node expr = parseExpression();
         consume(TokenType.SEMICOLON, "Expect ';' after expression.");
         return new ExpressionStatement(expr);
+    }
+
+    private Node parseUseStatement() {
+        Token libName = consume(TokenType.IDENTIFIER, "Expect library name after 'use'.");
+        consume(TokenType.SEMICOLON, "Expect ';' after library name.");
+        return new UseNode(libName.lexeme);
     }
 
     private Node parseFunctionDef() {
@@ -358,31 +387,31 @@ public class Parser {
     private Node parseEventTrigger() {
         // @EVENT_TRIGGER(duration,"seconds",times) -> statement;
         // @EVENT_TRIGGER("YYYY-MM-DD HH:MM:SS") -> statement;
-    
+
         consume(TokenType.LPAREN, "Expect '(' after @EVENT_TRIGGER.");
-    
+
         Node timeNode = parseExpression();
         String unit = null;
         Node timesNode = null;
-    
+
         // Check if we have a comma indicating a unit
         if (match(TokenType.COMMA)) {
             Token unitToken = consume(TokenType.STRING, "Expect a time unit as a string.");
             unit = unitToken.lexeme;
-    
+
             // Check if we have another comma indicating the times parameter
             if (match(TokenType.COMMA)) {
                 // times should be a number
                 timesNode = parseExpression();
             }
         }
-    
+
         consume(TokenType.RPAREN, "Expect ')' after event trigger time.");
         consume(TokenType.ARROW, "Expect '->' after event trigger declaration.");
-    
+
         Node action = parseStatement();
         return new EventTriggerNode(timeNode, unit, action, timesNode);
-    }    
+    }
 
     private List<Node> parseBlock() {
         List<Node> statements = new ArrayList<>();
@@ -508,18 +537,23 @@ public class Parser {
         }
 
         if (match(TokenType.IDENTIFIER)) {
-            String name = previous().lexeme;
-            if (match(TokenType.LPAREN)) {
+            Node expr = new VariableNode(previous().lexeme);
+
+            // Support for property access and method calls: e.g., ml.randomforest(...)
+            while (match(TokenType.DOT)) {
+                Token methodName = consume(TokenType.IDENTIFIER, "Expect method name after '.'");
+                consume(TokenType.LPAREN, "Expect '(' after method name.");
                 List<Node> args = new ArrayList<>();
-                if (!match(TokenType.RPAREN)) {
+                if (!check(TokenType.RPAREN)) {
                     do {
                         args.add(parseExpression());
                     } while (match(TokenType.COMMA));
-                    consume(TokenType.RPAREN, "Expect ')' after arguments.");
                 }
-                return new FunctionCallNode(name, args);
+                consume(TokenType.RPAREN, "Expect ')' after arguments.");
+                expr = new ObjectMethodCallNode(expr, methodName.lexeme, args);
             }
-            return new VariableNode(name);
+
+            return expr;
         }
 
         if (match(TokenType.LPAREN)) {

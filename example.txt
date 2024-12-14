@@ -1,3 +1,4 @@
+use ml;
 // Variable assignments and arithmetic
 x = 10;
 x = x + 5;
@@ -40,17 +41,6 @@ print->"Initial array: " + arr;
 arr += [6, 7];
 print->"Array after concatenation: " + arr;
 
-// Function definition and recursion
-function factorial(n) {
-    if (n == 0) {
-        return 1;
-    }
-    return n * factorial(n - 1);
-};
-input->"Enter a number:" -> num;
-result = factorial(num);
-print->"Factorial of " + num + " is " + result;
-
 // Boolean operations
 a = true;
 b = false;
@@ -85,7 +75,10 @@ print->"Encrypted secret number after computation: " + @ENCsecretNumber;
 // @EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
 
 // Time-based triggers (runs "Hello" every 5 seconds for 10 times)
- @EVENT_TRIGGER(1,"seconds",2) -> print->"Hello from time-based event!";
+ //@EVENT_TRIGGER(1,"seconds",2) -> print->"Hello from time-based event!";
 // One-time future event trigger example (replace with a future date/time as desired)
 // Format: YYYY-MM-DD HH:MM:SS
-@EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";
+//@EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";
+
+ml.randomforest("data.csv");
+ml.kmeans("data.csv");
