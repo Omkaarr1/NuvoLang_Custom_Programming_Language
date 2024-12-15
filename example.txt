@@ -82,6 +82,7 @@ print->"Encrypted secret number after computation: " + @ENCsecretNumber;
 //@EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";
 
 ml.randomforest("data.csv");
+//ml.kmeans("data.csv");
 
 blockchain.init("MySuperSecretKey", 500);
 print->"Blockchain wallet initialized!";
