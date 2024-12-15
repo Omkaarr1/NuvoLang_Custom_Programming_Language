@@ -22,7 +22,6 @@ import weka.filters.unsupervised.attribute.StringToNominal;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
 
 class ReturnException extends RuntimeException {
     public final Object value;
@@ -400,45 +399,66 @@ public class Interpreter {
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
     }
 
-    private void loadLibrary(String name) {
-        if (name.equals("ml")) {
-            setVariable("ml", new MlLibrary(), false);
-        } else {
-            throw new RuntimeException("Unknown library: " + name);
-        }
+private void loadLibrary(String name) {
+    if (name.equals("ml")) {
+        setVariable("ml", new MlLibrary(), false);
+    } else if (name.equals("blockchain")) {
+        setVariable("blockchain", new BlockchainLibrary(), false);
+    } else {
+        throw new RuntimeException("Unknown library: " + name);
     }
+}
 
-    private Object callObjectMethod(Object target, String methodName, List<Object> args) {
-        if (target instanceof MlLibrary) {
-            MlLibrary ml = (MlLibrary) target;
-            switch (methodName) {
-                case "randomforest":
-                    if (args.size() == 1 && args.get(0) instanceof String) {
-                        return ml.randomforest((String) args.get(0));
-                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
-                        return ml.randomforest((String) args.get(0), (String) args.get(1));
-                    } else {
-                        throw new RuntimeException("Invalid arguments for ml.randomforest");
-                    }
-                case "linearregression":
-                    if (args.size() == 1 && args.get(0) instanceof String) {
-                        return ml.linearregression((String) args.get(0));
-                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
-                        return ml.linearregression((String) args.get(0), (String) args.get(1));
-                    } else {
-                        throw new RuntimeException("Invalid arguments for ml.linearregression");
-                    }
-                case "kmeans":
-                    if (args.size() == 1 && args.get(0) instanceof String) {
-                        return ml.kmeans((String) args.get(0));
-                    } else {
-                        throw new RuntimeException("Invalid arguments for ml.kmeans");
-                    }
-                // Add more methods as needed
-            }
+private Object callObjectMethod(Object target, String methodName, List<Object> args) {
+    if (target instanceof MlLibrary) {
+        MlLibrary ml = (MlLibrary) target;
+        switch (methodName) {
+            case "randomforest":
+                if (args.size() == 1 && args.get(0) instanceof String) {
+                    return ml.randomforest((String) args.get(0));
+                } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                    return ml.randomforest((String) args.get(0), (String) args.get(1));
+                } else {
+                    throw new RuntimeException("Invalid arguments for ml.randomforest");
+                }
+            case "linearregression":
+                if (args.size() == 1 && args.get(0) instanceof String) {
+                    return ml.linearregression((String) args.get(0));
+                } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                    return ml.linearregression((String) args.get(0), (String) args.get(1));
+                } else {
+                    throw new RuntimeException("Invalid arguments for ml.linearregression");
+                }
+            case "kmeans":
+                if (args.size() == 1 && args.get(0) instanceof String) {
+                    return ml.kmeans((String) args.get(0));
+                } else {
+                    throw new RuntimeException("Invalid arguments for ml.kmeans");
+                }
+            default:
+                throw new RuntimeException("Unknown method " + methodName + " on ml object");
         }
-        throw new RuntimeException("Unknown method " + methodName + " on object " + target);
+    } else if (target instanceof BlockchainLibrary) {
+        BlockchainLibrary bc = (BlockchainLibrary) target;
+        switch (methodName) {
+            case "init":
+                if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
+                    return bc.init((String) args.get(0), ((Number) args.get(1)).doubleValue());
+                } else {
+                    throw new RuntimeException("Invalid arguments for blockchain.init");
+                }
+            case "transaction":
+                if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
+                    return bc.transaction((String) args.get(0), ((Number) args.get(1)).doubleValue());
+                } else {
+                    throw new RuntimeException("Invalid arguments for blockchain.transaction");
+                }
+            default:
+                throw new RuntimeException("Unknown method " + methodName + " on blockchain object");
+        }
     }
+    throw new RuntimeException("Unknown method " + methodName + " on object " + target);
+}
 
     private Object evaluateForPrint(Node node) {
         return evaluate(node, false);
@@ -931,5 +951,40 @@ class MlLibrary {
         } catch (Exception e) {
             throw new RuntimeException("Error performing K-Means: " + e.getMessage(), e);
         }
+    }
+}
+
+
+class BlockchainLibrary {
+    private String privateKey;
+    private double balance;
+    private String fromAddress;
+
+    public Object init(String privateKey, double amount) {
+        this.privateKey = privateKey;
+        this.balance = amount;
+        this.fromAddress = Integer.toHexString(privateKey.hashCode());
+        System.out.println("[blockchain] Initialized:");
+        System.out.println("    Address: " + fromAddress);
+        System.out.println("    Balance: " + balance);
+        return null;
+    }
+
+    public Object transaction(String toAddress, double amount) {
+        if (amount > balance) {
+            System.out.println("[blockchain] Transaction failed: insufficient funds.");
+            return null;
+        }
+        balance -= amount;
+        String transactionID = java.util.UUID.randomUUID().toString();
+        int hashCode = (fromAddress + toAddress + amount + transactionID).hashCode();
+
+        System.out.println("[blockchain] Transaction successful!");
+        System.out.println("    hashCode: " + hashCode);
+        System.out.println("    transactionID: " + transactionID);
+        System.out.println("    amount: " + amount);
+        System.out.println("    to Address: " + toAddress);
+
+        return null;
     }
 }
