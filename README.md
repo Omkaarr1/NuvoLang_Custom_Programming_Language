@@ -125,6 +125,7 @@ This project implements a **custom programming language interpreter** in Java, c
 ```plaintext
 use blockchain;
 use data_science;
+use ml;
 // Variable Assignments and Arithmetic Operations
 x = 10;
 x = x + 5;
@@ -151,6 +152,9 @@ function add(a, b) {
 
 result = add(10, 20);
 print->"Result of add function = " + result;
+
+rfModel = ml.randomforest("scripts/data.csv", "class");
+print->"Random Forest Model: " + rfModel;
 
 // Blockchain Operations
 blockchain.init("myPrivateKey", 1000);
@@ -184,12 +188,42 @@ Value of z = 315
 z is greater than 100
 Encrypted secret = nQiw0L5BJgJBo+MsCqZPIg==
 Result of add function = 30
+[ml] Random Forest trained on scripts/data.csv with target column 'class'
+[ml] Model Summary:
+RandomForest
+
+Bagging with 100 iterations and base learner
+
+weka.classifiers.trees.RandomTree -K 0 -M 1.0 -V 0.001 -S 1 -do-not-check-capabilities
+[ml] Accuracy: 40.0%
+[ml] Class: unacc
+    Precision: 1.0
+    Recall: 0.5
+    F1-Score: 0.6666666666666666
+[ml] Class: acc
+    Precision: 0.6666666666666666
+    Recall: 1.0
+    F1-Score: 0.8
+[ml] Class: vgood
+    Precision: 0.0
+    Recall: 0.0
+    F1-Score: 0.0
+[ml] Class: good
+    Precision: 0.0
+    Recall: 0.0
+    F1-Score: 0.0
+[ml] Random Forest model saved to 'randomforest.model'
+Random Forest Model: RandomForest
+
+Bagging with 100 iterations and base learner
+
+weka.classifiers.trees.RandomTree -K 0 -M 1.0 -V 0.001 -S 1 -do-not-check-capabilities
 [blockchain] Initialized:
     Address: adbb30a8
     Balance: 1000.0
 [blockchain] Transaction successful!
-    hashCode: -833409868
-    transactionID: 533b0c62-0184-4977-acdd-4dd748b04d2b
+    hashCode: -555811334
+    transactionID: eafa8cb6-9efc-499a-acdb-76716a1cca5d
     amount: 250.0
     to Address: recipientAddress
 [blockchain] Current Balance: 750.0
@@ -197,8 +231,8 @@ Result of add function = 30
   Transaction 1:
     To Address: recipientAddress
     Amount: 250.0
-    Transaction ID: 533b0c62-0184-4977-acdd-4dd748b04d2b
-    Hash Code: -833409868
+    Transaction ID: eafa8cb6-9efc-499a-acdb-76716a1cca5d
+    Hash Code: -555811334
 [data science] Loaded data from scripts/data2.csv
 [data science] Mean of 'age': 34.55
 [data science] Median of 'age': 34.5
