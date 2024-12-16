@@ -1,3 +1,5 @@
+package src;
+
 import java.util.*;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -19,6 +21,16 @@ import weka.core.SerializationHelper;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NumericToNominal;
 import weka.filters.unsupervised.attribute.StringToNominal;
+
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtils;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.statistics.HistogramDataset;
+import org.jfree.data.xy.XYDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
 import java.io.File;
 import java.io.IOException;
@@ -399,78 +411,153 @@ public class Interpreter {
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
     }
 
-private void loadLibrary(String name) {
-    if (name.equals("ml")) {
-        setVariable("ml", new MlLibrary(), false);
-    } else if (name.equals("blockchain")) {
-        setVariable("blockchain", new BlockchainLibrary(), false);
-    } else {
-        throw new RuntimeException("Unknown library: " + name);
+    private void loadLibrary(String name) {
+        if (name.equals("ml")) {
+            setVariable("ml", new MlLibrary(), false);
+        } else if (name.equals("blockchain")) {
+            setVariable("blockchain", new BlockchainLibrary(), false);
+        } else if (name.equals("data_science") || name.equals("data science")) { // Handle different naming conventions
+            setVariable("data_science", new DataScienceLibrary(), false);
+        } else {
+            throw new RuntimeException("Unknown library: " + name);
+        }
     }
-}
 
-private Object callObjectMethod(Object target, String methodName, List<Object> args) {
-    if (target instanceof MlLibrary) {
-        MlLibrary ml = (MlLibrary) target;
-        switch (methodName) {
-            case "randomforest":
-                if (args.size() == 1 && args.get(0) instanceof String) {
-                    return ml.randomforest((String) args.get(0));
-                } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
-                    return ml.randomforest((String) args.get(0), (String) args.get(1));
-                } else {
-                    throw new RuntimeException("Invalid arguments for ml.randomforest");
-                }
-            case "linearregression":
-                if (args.size() == 1 && args.get(0) instanceof String) {
-                    return ml.linearregression((String) args.get(0));
-                } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
-                    return ml.linearregression((String) args.get(0), (String) args.get(1));
-                } else {
-                    throw new RuntimeException("Invalid arguments for ml.linearregression");
-                }
-            case "kmeans":
-                if (args.size() == 1 && args.get(0) instanceof String) {
-                    return ml.kmeans((String) args.get(0));
-                } else {
-                    throw new RuntimeException("Invalid arguments for ml.kmeans");
-                }
-            default:
-                throw new RuntimeException("Unknown method " + methodName + " on ml object");
+    // Interpreter.java
+
+    @SuppressWarnings("unchecked")
+    private Object callObjectMethod(Object target, String methodName, List<Object> args) {
+        if (target instanceof MlLibrary) {
+            MlLibrary ml = (MlLibrary) target;
+            switch (methodName) {
+                case "randomforest":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.randomforest((String) args.get(0));
+                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                        return ml.randomforest((String) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.randomforest");
+                    }
+                case "linearregression":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.linearregression((String) args.get(0));
+                    } else if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof String) {
+                        return ml.linearregression((String) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.linearregression");
+                    }
+                case "kmeans":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ml.kmeans((String) args.get(0));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for ml.kmeans");
+                    }
+                default:
+                    throw new RuntimeException("Unknown method " + methodName + " on ml object");
+            }
+        } else if (target instanceof BlockchainLibrary) {
+            BlockchainLibrary bc = (BlockchainLibrary) target;
+            switch (methodName) {
+                case "init":
+                    if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
+                        return bc.init((String) args.get(0), ((Number) args.get(1)).doubleValue());
+                    } else {
+                        throw new RuntimeException("Invalid arguments for blockchain.init");
+                    }
+                case "transaction":
+                    if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
+                        return bc.transaction((String) args.get(0), ((Number) args.get(1)).doubleValue());
+                    } else {
+                        throw new RuntimeException("Invalid arguments for blockchain.transaction");
+                    }
+                case "showCurrentBalance":
+                    if (args.size() == 0) {
+                        return bc.showCurrentBalance();
+                    } else {
+                        throw new RuntimeException("showCurrentBalance does not take any arguments.");
+                    }
+                case "showTransactionHistory":
+                    if (args.size() == 0) {
+                        return bc.showTransactionHistory();
+                    } else {
+                        throw new RuntimeException("showTransactionHistory does not take any arguments.");
+                    }
+                default:
+                    throw new RuntimeException("Unknown method " + methodName + " on blockchain object");
+            }
+        } else if (target instanceof DataScienceLibrary) {
+            DataScienceLibrary ds = (DataScienceLibrary) target;
+            switch (methodName) {
+                case "loadCSV":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return ds.loadCSV((String) args.get(0));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.loadCSV");
+                    }
+                case "calculateMean":
+                    if (args.size() == 2 && args.get(0) instanceof Instances && args.get(1) instanceof String) {
+                        return ds.calculateMean((Instances) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.calculateMean");
+                    }
+                case "calculateMedian":
+                    if (args.size() == 2 && args.get(0) instanceof Instances && args.get(1) instanceof String) {
+                        return ds.calculateMedian((Instances) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.calculateMedian");
+                    }
+                case "calculateStdDev":
+                    if (args.size() == 2 && args.get(0) instanceof Instances && args.get(1) instanceof String) {
+                        return ds.calculateStdDev((Instances) args.get(0), (String) args.get(1));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.calculateStdDev");
+                    }
+                case "plotHistogram":
+                    if (args.size() == 3 && args.get(0) instanceof Instances && args.get(1) instanceof String
+                            && args.get(2) instanceof String) {
+                        ds.plotHistogram((Instances) args.get(0), (String) args.get(1), (String) args.get(2));
+                        return null; // plotHistogram is void
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.plotHistogram");
+                    }
+                case "plotScatter":
+                    if (args.size() == 4 && args.get(0) instanceof Instances && args.get(1) instanceof String
+                            && args.get(2) instanceof String && args.get(3) instanceof String) {
+                        ds.plotScatter((Instances) args.get(0), (String) args.get(1), (String) args.get(2),
+                                (String) args.get(3));
+                        return null; // plotScatter is void
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.plotScatter");
+                    }
+                case "filterData":
+                    if (args.size() == 4 && args.get(0) instanceof Instances && args.get(1) instanceof String
+                            && args.get(2) instanceof String && args.get(3) instanceof Number) {
+                        return ds.filterData((Instances) args.get(0), (String) args.get(1), (String) args.get(2),
+                                ((Number) args.get(3)).doubleValue());
+                    } else {
+                        throw new RuntimeException("Invalid arguments for data_science.filterData");
+                    }
+                    // Add more cases for additional DataScienceLibrary methods as needed
+                default:
+                    throw new RuntimeException("Unknown method " + methodName + " on data_science object");
+            }
+        } else if (target instanceof Instances) {
+            Instances instances = (Instances) target;
+            switch (methodName) {
+                case "numInstances":
+                    if (args.size() == 0) {
+                        return instances.numInstances();
+                    } else {
+                        throw new RuntimeException("numInstances method does not take any arguments.");
+                    }
+                    // Add more Instances methods as needed
+                default:
+                    throw new RuntimeException("Unknown method " + methodName + " on Instances object.");
+            }
         }
-    } else if (target instanceof BlockchainLibrary) {
-        BlockchainLibrary bc = (BlockchainLibrary) target;
-        switch (methodName) {
-            case "init":
-                if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
-                    return bc.init((String) args.get(0), ((Number) args.get(1)).doubleValue());
-                } else {
-                    throw new RuntimeException("Invalid arguments for blockchain.init");
-                }
-            case "transaction":
-                if (args.size() == 2 && args.get(0) instanceof String && args.get(1) instanceof Number) {
-                    return bc.transaction((String) args.get(0), ((Number) args.get(1)).doubleValue());
-                } else {
-                    throw new RuntimeException("Invalid arguments for blockchain.transaction");
-                }
-            case "showCurrentBalance":
-                if (args.size() == 0) {
-                    return bc.showCurrentBalance();
-                } else {
-                    throw new RuntimeException("showCurrentBalance does not take any arguments.");
-                }
-            case "showTransactionHistory":
-                if (args.size() == 0) {
-                    return bc.showTransactionHistory();
-                } else {
-                    throw new RuntimeException("showTransactionHistory does not take any arguments.");
-                }
-            default:
-                throw new RuntimeException("Unknown method " + methodName + " on blockchain object");
-        }
+
+        throw new RuntimeException("Unknown method " + methodName + " on object " + target);
     }
-    throw new RuntimeException("Unknown method " + methodName + " on object " + target);
-}
 
     private Object evaluateForPrint(Node node) {
         return evaluate(node, false);
@@ -485,6 +572,29 @@ private Object callObjectMethod(Object target, String methodName, List<Object> a
                 return num - 1;
             default:
                 throw new RuntimeException("Unsupported unary operator");
+        }
+    }
+
+    // Interpreter.java
+
+    /**
+     * Combines two lists into a new list containing elements from both.
+     *
+     * @param left  The first list to combine.
+     * @param right The second list to combine.
+     * @return A new list containing elements from both left and right lists.
+     */
+    public List<Object> combineLists(Object left, Object right) {
+        if (left instanceof List<?> && right instanceof List<?>) {
+            List<?> leftList = (List<?>) left;
+            List<?> rightList = (List<?>) right;
+
+            List<Object> combined = new ArrayList<>();
+            combined.addAll(leftList);
+            combined.addAll(rightList);
+            return combined;
+        } else {
+            throw new RuntimeException("Both left and right must be instances of List<?>.");
         }
     }
 
@@ -774,7 +884,8 @@ private Object callObjectMethod(Object target, String methodName, List<Object> a
     }
 
     private void runLimitedTimes(Node action, long delayMillis, int remainingRuns) {
-        if (remainingRuns <= 0) return;
+        if (remainingRuns <= 0)
+            return;
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -850,7 +961,7 @@ class MlLibrary {
             RandomForest rf = new RandomForest();
             rf.buildClassifier(data);
             System.out.println("[ml] Random Forest trained on " + csv +
-                (column != null ? " with target column '" + column + "'" : ""));
+                    (column != null ? " with target column '" + column + "'" : ""));
             System.out.println("[ml] Model Summary:\n" + rf.toString());
 
             Evaluation eval = new Evaluation(data);
@@ -892,13 +1003,14 @@ class MlLibrary {
             Instances data = loadData(csv, column);
 
             if (!data.classAttribute().isNumeric()) {
-                System.out.println("[ml] Warning: The class attribute is not numeric. Linear Regression is intended for numeric targets.");
+                System.out.println(
+                        "[ml] Warning: The class attribute is not numeric. Linear Regression is intended for numeric targets.");
             }
 
             LinearRegression lr = new LinearRegression();
             lr.buildClassifier(data);
             System.out.println("[ml] Linear Regression trained on " + csv +
-                (column != null ? " with target column '" + column + "'" : ""));
+                    (column != null ? " with target column '" + column + "'" : ""));
             System.out.println("[ml] Model Coefficients:\n" + lr);
 
             Evaluation eval = new Evaluation(data);
@@ -965,7 +1077,6 @@ class MlLibrary {
         }
     }
 }
-
 
 class BlockchainLibrary {
     private String privateKey;
@@ -1044,4 +1155,297 @@ class BlockchainLibrary {
         }
         return transactionHistory;
     }
+}
+
+class DataScienceLibrary {
+
+    /**
+     * Loads a CSV file into a Weka Instances object.
+     *
+     * @param csvPath Path to the CSV file.
+     * @return Instances object containing the dataset.
+     */
+    public Instances loadCSV(String csvPath) {
+        try {
+            CSVLoader loader = new CSVLoader();
+            loader.setSource(new File(csvPath));
+            Instances data = loader.getDataSet();
+
+            // Set class index to the last attribute if not already set
+            if (data.classIndex() == -1) {
+                data.setClassIndex(data.numAttributes() - 1);
+            }
+
+            // Convert string attributes to nominal
+            StringToNominal stn = new StringToNominal();
+            stn.setAttributeRange("first-last");
+            stn.setInputFormat(data);
+            data = Filter.useFilter(data, stn);
+
+            System.out.println("[data science] Loaded data from " + csvPath);
+            return data;
+        } catch (IOException e) {
+            throw new RuntimeException("Error loading CSV file: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error processing CSV file: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Calculates the mean of a specified numeric attribute.
+     *
+     * @param data          The dataset (Instances object).
+     * @param attributeName The name of the numeric attribute.
+     * @return The mean value as a double.
+     */
+    public double calculateMean(Instances data, String attributeName) {
+        validateAttribute(data, attributeName, "numeric");
+        int attrIndex = data.attribute(attributeName).index();
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            stats.addValue(data.instance(i).value(attrIndex));
+        }
+
+        double mean = stats.getMean();
+        System.out.println("[data science] Mean of '" + attributeName + "': " + mean);
+        return mean;
+    }
+
+    /**
+     * Calculates the median of a specified numeric attribute.
+     *
+     * @param data          The dataset (Instances object).
+     * @param attributeName The name of the numeric attribute.
+     * @return The median value as a double.
+     */
+    public double calculateMedian(Instances data, String attributeName) {
+        validateAttribute(data, attributeName, "numeric");
+        int attrIndex = data.attribute(attributeName).index();
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            stats.addValue(data.instance(i).value(attrIndex));
+        }
+
+        double median = stats.getPercentile(50);
+        System.out.println("[data science] Median of '" + attributeName + "': " + median);
+        return median;
+    }
+
+    /**
+     * Calculates the standard deviation of a specified numeric attribute.
+     *
+     * @param data          The dataset (Instances object).
+     * @param attributeName The name of the numeric attribute.
+     * @return The standard deviation as a double.
+     */
+    public double calculateStdDev(Instances data, String attributeName) {
+        validateAttribute(data, attributeName, "numeric");
+        int attrIndex = data.attribute(attributeName).index();
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            stats.addValue(data.instance(i).value(attrIndex));
+        }
+
+        double stdDev = stats.getStandardDeviation();
+        System.out.println("[data science] Standard Deviation of '" + attributeName + "': " + stdDev);
+        return stdDev;
+    }
+
+    /**
+     * Creates and saves a histogram for a specified numeric attribute.
+     *
+     * @param data          The dataset (Instances object).
+     * @param attributeName The name of the numeric attribute.
+     * @param outputPath    Path to save the histogram PNG file.
+     */
+    public void plotHistogram(Instances data, String attributeName, String outputPath) {
+        validateAttribute(data, attributeName, "numeric");
+        int attrIndex = data.attribute(attributeName).index();
+        HistogramDataset dataset = new HistogramDataset();
+
+        double[] values = new double[data.numInstances()];
+        for (int i = 0; i < data.numInstances(); i++) {
+            values[i] = data.instance(i).value(attrIndex);
+        }
+
+        dataset.addSeries(attributeName, values, 10); // 10 bins
+
+        JFreeChart histogram = ChartFactory.createHistogram(
+                "Histogram of " + attributeName,
+                attributeName,
+                "Frequency",
+                dataset);
+
+        try {
+            ChartUtils.saveChartAsPNG(new File(outputPath), histogram, 800, 600);
+            System.out.println("[data science] Histogram saved to " + outputPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Error saving histogram: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Creates and saves a scatter plot between two specified numeric attributes.
+     *
+     * @param data       The dataset (Instances object).
+     * @param attributeX The name of the X-axis numeric attribute.
+     * @param attributeY The name of the Y-axis numeric attribute.
+     * @param outputPath Path to save the scatter plot PNG file.
+     */
+    public void plotScatter(Instances data, String attributeX, String attributeY, String outputPath) {
+        validateAttribute(data, attributeX, "numeric");
+        validateAttribute(data, attributeY, "numeric");
+        int xIndex = data.attribute(attributeX).index();
+        int yIndex = data.attribute(attributeY).index();
+
+        XYSeries series = new XYSeries("Data Points");
+        for (int i = 0; i < data.numInstances(); i++) {
+            series.add(data.instance(i).value(xIndex), data.instance(i).value(yIndex));
+        }
+
+        XYDataset dataset = new XYSeriesCollection(series);
+
+        JFreeChart scatterPlot = ChartFactory.createScatterPlot(
+                "Scatter Plot of " + attributeX + " vs " + attributeY,
+                attributeX,
+                attributeY,
+                dataset);
+
+        try {
+            ChartUtils.saveChartAsPNG(new File(outputPath), scatterPlot, 800, 600);
+            System.out.println("[data science] Scatter plot saved to " + outputPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Error saving scatter plot: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Filters the dataset based on the specified attribute, operator, and value.
+     * Supports numeric attributes and operators: ">", "<", "==", ">=", "<=".
+     *
+     * @param data      The original dataset.
+     * @param attribute The attribute name to filter on.
+     * @param operator  The operator for filtering (e.g., ">", "<", "==").
+     * @param value     The value to compare against.
+     * @return A new Instances object containing only the filtered data.
+     */
+    public Instances filterData(Instances data, String attribute, String operator, double value) {
+        try {
+            // Verify that the attribute exists in the dataset
+            if (data.attribute(attribute) == null) {
+                throw new IllegalArgumentException("Attribute '" + attribute + "' does not exist in the dataset.");
+            }
+
+            // Verify that the attribute is numeric
+            if (!data.attribute(attribute).isNumeric()) {
+                throw new IllegalArgumentException("Attribute '" + attribute + "' is not numeric.");
+            }
+
+            // Create a new Instances object to hold the filtered data
+            Instances filteredData = new Instances(data, 0);
+
+            // Iterate through each instance and apply the filter condition
+            for (int i = 0; i < data.numInstances(); i++) {
+                double attrValue = data.instance(i).value(data.attribute(attribute));
+                boolean conditionMet = false;
+
+                switch (operator) {
+                    case ">":
+                        conditionMet = attrValue > value;
+                        break;
+                    case "<":
+                        conditionMet = attrValue < value;
+                        break;
+                    case "==":
+                        conditionMet = attrValue == value;
+                        break;
+                    case ">=":
+                        conditionMet = attrValue >= value;
+                        break;
+                    case "<=":
+                        conditionMet = attrValue <= value;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unsupported operator: " + operator);
+                }
+
+                if (conditionMet) {
+                    filteredData.add(data.instance(i));
+                }
+            }
+
+            // Debug Statements
+            System.out.println("[data science] Filtered data based on " + attribute + " " + operator + " " + value);
+            System.out.println("[data science] Number of instances after filtering: " + filteredData.numInstances());
+
+            return filteredData;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to filter data: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Validates that the specified attribute exists and is of the expected type.
+     *
+     * @param data          The dataset (Instances object).
+     * @param attributeName The name of the attribute.
+     * @param expectedType  The expected type of the attribute (e.g., "numeric").
+     */
+    private void validateAttribute(Instances data, String attributeName, String expectedType) {
+        Attribute attr = data.attribute(attributeName);
+        if (attr == null) {
+            throw new RuntimeException("Attribute '" + attributeName + "' does not exist in the dataset.");
+        }
+
+        switch (expectedType.toLowerCase()) {
+            case "numeric":
+                if (!attr.isNumeric()) {
+                    throw new RuntimeException("Attribute '" + attributeName + "' is not numeric.");
+                }
+                break;
+            case "nominal":
+                if (!attr.isNominal()) {
+                    throw new RuntimeException("Attribute '" + attributeName + "' is not nominal.");
+                }
+                break;
+            // Add more cases for different types if needed
+            default:
+                throw new RuntimeException("Unknown expected type: " + expectedType);
+        }
+    }
+
+    /**
+     * Evaluates a condition between two numeric values based on the operator.
+     *
+     * @param attrValue The attribute value from the dataset.
+     * @param operator  The comparison operator.
+     * @param value     The value to compare against.
+     * @return True if the condition holds, otherwise false.
+     */
+    private boolean evaluateCondition(double attrValue, String operator, double value) {
+        switch (operator) {
+            case ">":
+                return attrValue > value;
+            case "<":
+                return attrValue < value;
+            case ">=":
+                return attrValue >= value;
+            case "<=":
+                return attrValue <= value;
+            case "==":
+                return attrValue == value;
+            case "!=":
+                return attrValue != value;
+            default:
+                throw new RuntimeException(
+                        "Unsupported operator: " + operator + ". Supported operators are >, <, >=, <=, ==, !=.");
+        }
+    }
+
+    // Additional data manipulation and statistical analysis methods can be added
+    // here
 }

@@ -1,3 +1,5 @@
+package src;
+
 public enum TokenType {
     // Single-character tokens
     PLUS, MINUS, STAR, SLASH, MOD, DOT,

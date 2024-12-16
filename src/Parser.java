@@ -1,6 +1,9 @@
+package src;
+
 import java.util.*;
 
-abstract class Node {}
+abstract class Node {
+}
 
 // Expression Nodes
 class BinaryNode extends Node {
@@ -175,6 +178,7 @@ class EventTriggerNode extends Node {
 
 class UseNode extends Node {
     String libraryName;
+
     UseNode(String libraryName) {
         this.libraryName = libraryName;
     }
@@ -209,7 +213,8 @@ public class Parser {
     }
 
     private Token advanceToken() {
-        if (!isAtEnd()) current++;
+        if (!isAtEnd())
+            current++;
         return previous();
     }
 
@@ -228,12 +233,14 @@ public class Parser {
     }
 
     private boolean check(TokenType type) {
-        if (isAtEnd()) return false;
+        if (isAtEnd())
+            return false;
         return peek().type == type;
     }
 
     private Token consume(TokenType type, String message) {
-        if (check(type)) return advanceToken();
+        if (check(type))
+            return advanceToken();
         Token token = peek();
         throw error(token, message);
     }

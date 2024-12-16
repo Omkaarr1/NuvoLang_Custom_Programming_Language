@@ -1,0 +1,27 @@
+use ml;
+use blockchain;
+use data_science;
+
+// Load dataset
+dataset = data_science.loadCSV("scripts/data2.csv");
+
+// Calculate statistics
+meanAge = data_science.calculateMean(dataset, "age");
+medianAge = data_science.calculateMedian(dataset, "age");
+stdDevAge = data_science.calculateStdDev(dataset, "age");
+
+// Print statistics
+print->"Mean age: " + meanAge;
+print->"Median age: " + medianAge;
+print->"Standard Deviation of age: " + stdDevAge;
+
+// Create visualizations
+data_science.plotHistogram(dataset, "age", "scripts/age_histogram.png");
+data_science.plotScatter(dataset, "age", "salary", "scripts/age_salary_scatter.png");
+
+// Filter data where age > 30
+filteredData = data_science.filterData(dataset, "age", ">", 30);
+print->"Filtered Data Instances (age > 30): " + filteredData.numInstances();
+
+// Optionally, print the filtered data's salaries
+// You can extend the DataScienceLibrary to include methods for iterating or displaying filtered data if needed

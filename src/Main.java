@@ -1,3 +1,5 @@
+package src;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -6,10 +8,15 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         try {
-            // Specify the path to your input file
-            String filePath = "example.txt";
+            if (args.length < 1) {
+                System.err.println("Usage: java Main <script_file>");
+                System.exit(1);
+            }
 
-            // Read the entire input from example.txt
+            // Specify the path to your input file
+            String filePath = args[0]; // Use the first argument
+
+            // Read the entire input from the script file
             String inputCode = readInput(filePath);
 
             // Initialize Lexer
@@ -28,8 +35,10 @@ public class Main {
 
         } catch (RuntimeException e) {
             System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(); // Optional: Print stack trace for debugging
         } catch (IOException e) {
             System.err.println("IO Error: " + e.getMessage());
+            e.printStackTrace(); // Optional: Print stack trace for debugging
         }
     }
 

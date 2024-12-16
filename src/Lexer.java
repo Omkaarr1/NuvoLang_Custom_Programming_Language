@@ -1,3 +1,5 @@
+package src;
+
 import java.util.*;
 
 public class Lexer {
@@ -39,7 +41,8 @@ public class Lexer {
     }
 
     private boolean match(char expected) {
-        if (isAtEnd() || input.charAt(pos) != expected) return false;
+        if (isAtEnd() || input.charAt(pos) != expected)
+            return false;
         pos++;
         column++;
         return true;
@@ -93,7 +96,8 @@ public class Lexer {
                         tokens.add(new Token(TokenType.SLASH_EQ, "/=", startLine, startColumn));
                     } else if (match('/')) {
                         // Comment, consume until end of line
-                        while (!isAtEnd() && peek() != '\n') advance();
+                        while (!isAtEnd() && peek() != '\n')
+                            advance();
                     } else {
                         tokens.add(new Token(TokenType.SLASH, "/", startLine, startColumn));
                     }
@@ -214,17 +218,28 @@ public class Lexer {
         }
 
         // Additional keywords
-        if (actualName.equals("use")) return new Token(TokenType.USE, word, startLine, startColumn);
-        if (actualName.equals("print")) return new Token(TokenType.PRINT, word, startLine, startColumn);
-        if (actualName.equals("if")) return new Token(TokenType.IF, word, startLine, startColumn);
-        if (actualName.equals("else")) return new Token(TokenType.ELSE, word, startLine, startColumn);
-        if (actualName.equals("for")) return new Token(TokenType.FOR, word, startLine, startColumn);
-        if (actualName.equals("to")) return new Token(TokenType.TO, word, startLine, startColumn);
-        if (actualName.equals("input")) return new Token(TokenType.INPUT, word, startLine, startColumn);
-        if (actualName.equals("while")) return new Token(TokenType.WHILE, word, startLine, startColumn);
-        if (actualName.equals("function")) return new Token(TokenType.FUNCTION, word, startLine, startColumn);
-        if (actualName.equals("return")) return new Token(TokenType.RETURN, word, startLine, startColumn);
-        if (actualName.equals("true") || actualName.equals("false")) return new Token(TokenType.BOOLEAN, word, startLine, startColumn);
+        if (actualName.equals("use"))
+            return new Token(TokenType.USE, word, startLine, startColumn);
+        if (actualName.equals("print"))
+            return new Token(TokenType.PRINT, word, startLine, startColumn);
+        if (actualName.equals("if"))
+            return new Token(TokenType.IF, word, startLine, startColumn);
+        if (actualName.equals("else"))
+            return new Token(TokenType.ELSE, word, startLine, startColumn);
+        if (actualName.equals("for"))
+            return new Token(TokenType.FOR, word, startLine, startColumn);
+        if (actualName.equals("to"))
+            return new Token(TokenType.TO, word, startLine, startColumn);
+        if (actualName.equals("input"))
+            return new Token(TokenType.INPUT, word, startLine, startColumn);
+        if (actualName.equals("while"))
+            return new Token(TokenType.WHILE, word, startLine, startColumn);
+        if (actualName.equals("function"))
+            return new Token(TokenType.FUNCTION, word, startLine, startColumn);
+        if (actualName.equals("return"))
+            return new Token(TokenType.RETURN, word, startLine, startColumn);
+        if (actualName.equals("true") || actualName.equals("false"))
+            return new Token(TokenType.BOOLEAN, word, startLine, startColumn);
 
         return new Token(TokenType.IDENTIFIER, word, startLine, startColumn);
     }
@@ -235,7 +250,8 @@ public class Lexer {
         boolean hasDot = false;
         while (!isAtEnd() && (isDigit(peek()) || peek() == '.')) {
             if (peek() == '.') {
-                if (hasDot) break;
+                if (hasDot)
+                    break;
                 hasDot = true;
             }
             sb.append(advance());
@@ -251,18 +267,29 @@ public class Lexer {
                 if (!isAtEnd()) {
                     char next = advance();
                     switch (next) {
-                        case 'n': sb.append('\n'); break;
-                        case 't': sb.append('\t'); break;
-                        case '"': sb.append('"'); break;
-                        case '\\': sb.append('\\'); break;
-                        default: sb.append(next); break;
+                        case 'n':
+                            sb.append('\n');
+                            break;
+                        case 't':
+                            sb.append('\t');
+                            break;
+                        case '"':
+                            sb.append('"');
+                            break;
+                        case '\\':
+                            sb.append('\\');
+                            break;
+                        default:
+                            sb.append(next);
+                            break;
                     }
                 }
             } else {
                 sb.append(c);
             }
         }
-        if (!isAtEnd()) advance(); // consume the closing quote
+        if (!isAtEnd())
+            advance(); // consume the closing quote
         else {
             throw new RuntimeException("Unterminated string literal at line " + line + ", column " + column);
         }
