@@ -123,6 +123,8 @@ This project implements a **custom programming language interpreter** in Java, c
 
 ### Example Input File (`example.txt`):
 ```plaintext
+use blockchain;
+use data_science;
 // Variable Assignments and Arithmetic Operations
 x = 10;
 x = x + 5;
@@ -134,36 +136,29 @@ z = x * y;
 print->"Value of z = " + z;
 
 // Conditional Statement
-if (z > 100) print->"z is greater than 100" else print->"z is not greater than 100";
+if  (z > 100) { print->"z is greater than 100"; } else { print->"z is not greater than 100"; }
 
 // Encrypted Variable
 @ENCsecret = "mySecretValue";
 print->"Encrypted secret = " + @ENCsecret;
 
 // Event Trigger: Print "Hello" every 5 seconds
-@EVENT_TRIGGER(5,"seconds") -> print->"Hello";
 
 // Function Definition and Call
 function add(a, b) {
   return a + b;
-}
+};
+
 result = add(10, 20);
 print->"Result of add function = " + result;
 
-// Machine Learning: Random Forest
-use ml;
-rfModel = ml.randomforest("scripts/data2.csv", "age");
-print->"Random Forest Model: " + rfModel;
-
 // Blockchain Operations
-use blockchain;
 blockchain.init("myPrivateKey", 1000);
 blockchain.transaction("recipientAddress", 250);
 blockchain.showCurrentBalance();
 blockchain.showTransactionHistory();
 
 // Data Science Operations
-use data_science;
 dataset = data_science.loadCSV("scripts/data2.csv");
 meanAge = data_science.calculateMean(dataset, "age");
 medianAge = data_science.calculateMedian(dataset, "age");
@@ -183,15 +178,27 @@ print->"Filtered Data Instances (age > 30): " + filteredData.numInstances();
 
 ### Corresponding Output:
 ```plaintext
-Value of x = 15.0
+Value of x = 15
 Value of y after increment = 21.0
-Value of z = 315.0
+Value of z = 315
 z is greater than 100
-Encrypted secret = mySecretValue
-Hello
-Hello
-...
-Result of add function = 30.0
+Encrypted secret = nQiw0L5BJgJBo+MsCqZPIg==
+Result of add function = 30
+[blockchain] Initialized:
+    Address: adbb30a8
+    Balance: 1000.0
+[blockchain] Transaction successful!
+    hashCode: -833409868
+    transactionID: 533b0c62-0184-4977-acdd-4dd748b04d2b
+    amount: 250.0
+    to Address: recipientAddress
+[blockchain] Current Balance: 750.0
+[blockchain] Transaction History:
+  Transaction 1:
+    To Address: recipientAddress
+    Amount: 250.0
+    Transaction ID: 533b0c62-0184-4977-acdd-4dd748b04d2b
+    Hash Code: -833409868
 [data science] Loaded data from scripts/data2.csv
 [data science] Mean of 'age': 34.55
 [data science] Median of 'age': 34.5
