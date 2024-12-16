@@ -1,6 +1,6 @@
 # Custom Programming Language Interpreter in Java
 
-This project implements a **custom programming language interpreter** in Java, complete with a **lexer**, **parser**, and **interpreter**. It reads program files, tokenizes and parses them, and executes the code line-by-line. The language supports a wide range of features, including variable assignments, arithmetic operations, conditional statements (`if-else`), functions, arrays, encrypted variables, machine learning integrations, blockchain functionalities, data science operations, and temporal event triggers.
+This project implements a **custom programming language interpreter** in Java, complete with a **lexer**, **parser**, and **interpreter**. It reads program files, tokenizes and parses them, and executes the code line-by-line. The language supports a wide range of features, including variable assignments, arithmetic operations, conditional statements (`if-else`), functions, arrays, encrypted variables, machine learning integrations, blockchain functionalities, data science operations, **database interactions**, and temporal event triggers.
 
 ---
 
@@ -101,11 +101,23 @@ This project implements a **custom programming language interpreter** in Java, c
       - Generate visualizations like histograms and scatter plots.
       - Filter datasets based on specific conditions.
 
-14. **Error Handling:**
+14. **Database Operations:**
+    - **Database Library**: Enables interaction with SQL databases.
+    - **Supported Methods**:
+      - `connect(connectionString, username, password);`
+      - `query(sqlStatement);`
+      - `close();`
+    - **Features**:
+      - Establish connections to various SQL databases (e.g., MySQL, PostgreSQL).
+      - Execute SQL queries including `CREATE`, `INSERT`, `UPDATE`, `DELETE`, and `SELECT`.
+      - Retrieve and manipulate query results within the interpreter.
+      - Manage database connections and ensure proper resource handling.
+
+15. **Error Handling:**
     - **Lexer and Parser**: Report line and column numbers for syntax errors.
     - **Runtime Errors**: Produce descriptive messages (e.g., undefined variable, division by zero).
 
-15. **Dynamic and Interpreted Nature:**
+16. **Dynamic and Interpreted Nature:**
     - **Interpreted Execution**: Code is lexed, parsed, and interpreted at runtime.
     - **Dynamic Typing**: Variables and functions are dynamically created at runtime, no explicit type declarations needed.
     - **On-the-Fly Computations**: Supports dynamic computations and modifications of variables.
@@ -120,12 +132,15 @@ This project implements a **custom programming language interpreter** in Java, c
 - **Conditionals**: Must be written as one statement: `if (condition) <statement> else <statement>;`.
 - **Function Definitions**: Use the `function` keyword followed by the function name and parameters.
 - **Event Triggers**: Use `@EVENT_TRIGGER(duration,"unit") -> <statement>;` or `@EVENT_TRIGGER("YYYY-MM-DD HH:MM:SS") -> <statement>;`.
+- **Database Operations**: Use `use database;` to import the database library and interact using the `db` object.
 
 ### Example Input File (`example.txt`):
 ```plaintext
+use database;
 use blockchain;
 use data_science;
 use ml;
+
 // Variable Assignments and Arithmetic Operations
 x = 10;
 x = x + 5;
@@ -137,22 +152,28 @@ z = x * y;
 print->"Value of z = " + z;
 
 // Conditional Statement
-if  (z > 100) { print->"z is greater than 100"; } else { print->"z is not greater than 100"; }
+if (z > 100) { 
+    print->"z is greater than 100"; 
+} else { 
+    print->"z is not greater than 100"; 
+}
 
 // Encrypted Variable
 @ENCsecret = "mySecretValue";
 print->"Encrypted secret = " + @ENCsecret;
 
 // Event Trigger: Print "Hello" every 5 seconds
+//@EVENT_TRIGGER(5, "seconds") -> print->"Hello";
 
 // Function Definition and Call
 function add(a, b) {
-  return a + b;
+    return a + b;
 };
 
 result = add(10, 20);
 print->"Result of add function = " + result;
 
+// Machine Learning Operations
 rfModel = ml.randomforest("scripts/data.csv", "class");
 print->"Random Forest Model: " + rfModel;
 
@@ -178,6 +199,58 @@ data_science.plotScatter(dataset, "age", "salary", "scripts/age_salary_scatter.p
 // Data Filtering
 filteredData = data_science.filterData(dataset, "age", ">", 30);
 print->"Filtered Data Instances (age > 30): " + filteredData.numInstances();
+
+// -------------------------------------------------
+// Database Operations
+// -------------------------------------------------
+
+// Connect to the Database
+db.connect("jdbc:mysql://localhost:3306/supermarket", "root", "0000");
+print->"Connected to the database.";
+
+// Create a Table (if not exists)
+createTableQuery = "CREATE TABLE IF NOT EXISTS employees ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "name VARCHAR(100) NOT NULL, "
+                + "age INT, "
+                + "salary DOUBLE)";
+db.query(createTableQuery);
+print->"Checked/Created table 'employees'.";
+
+// Insert Records
+insertQuery1 = "INSERT INTO employees (name, age, salary) VALUES ('Alice', 30, 70000)";
+insertQuery2 = "INSERT INTO employees (name, age, salary) VALUES ('Bob', 25, 50000)";
+insertQuery3 = "INSERT INTO employees (name, age, salary) VALUES ('Charlie', 35, 80000)";
+db.query(insertQuery1);
+db.query(insertQuery2);
+db.query(insertQuery3);
+db.query("SET SQL_SAFE_UPDATES = 0");
+
+print->"Inserted 3 records into 'employees'.";
+
+// Query Records
+updateQuery = "UPDATE employees SET salary = 75000 WHERE name = 'Alice'";
+db.query(updateQuery);
+print->"Updated Alice's salary.";
+
+// Query Updated Record
+selectAlice = "SELECT * FROM employees WHERE name = 'Alice'";
+alice = db.query(selectAlice);
+print->"Updated Record for Alice:";
+
+// Delete a Record
+deleteQuery = "DELETE FROM employees WHERE name = 'Bob'";
+db.query(deleteQuery);
+print->"Deleted record for Bob.";
+
+// Query After Deletion
+selectAll = "SELECT * FROM employees";
+remainingEmployees = db.query(selectAll);
+print->"Employees Table After Deletion:";
+
+// Close the Database Connection
+db.close();
+print->"Closed the database connection.";
 ```
 
 ### Corresponding Output:
@@ -222,8 +295,8 @@ weka.classifiers.trees.RandomTree -K 0 -M 1.0 -V 0.001 -S 1 -do-not-check-capabi
     Address: adbb30a8
     Balance: 1000.0
 [blockchain] Transaction successful!
-    hashCode: -555811334
-    transactionID: eafa8cb6-9efc-499a-acdb-76716a1cca5d
+    hashCode: 1038007891
+    transactionID: d4050b59-c32a-40f8-a419-c2daf61c0db7
     amount: 250.0
     to Address: recipientAddress
 [blockchain] Current Balance: 750.0
@@ -231,8 +304,8 @@ weka.classifiers.trees.RandomTree -K 0 -M 1.0 -V 0.001 -S 1 -do-not-check-capabi
   Transaction 1:
     To Address: recipientAddress
     Amount: 250.0
-    Transaction ID: eafa8cb6-9efc-499a-acdb-76716a1cca5d
-    Hash Code: -555811334
+    Transaction ID: d4050b59-c32a-40f8-a419-c2daf61c0db7
+    Hash Code: 1038007891
 [data science] Loaded data from scripts/data2.csv
 [data science] Mean of 'age': 34.55
 [data science] Median of 'age': 34.5
@@ -245,6 +318,25 @@ Standard Deviation of age: 6.00416522091123
 [data science] Filtered data based on age > 30.0
 [data science] Number of instances after filtering: 14
 Filtered Data Instances (age > 30): 14
+[database] Connected to database successfully.
+Connected to the database.
+[database] Query executed successfully. Rows affected: 0
+Checked/Created table 'employees'.
+[database] Query executed successfully. Rows affected: 1
+[database] Query executed successfully. Rows affected: 1
+[database] Query executed successfully. Rows affected: 1
+[database] Query executed successfully. Rows affected: 0
+Inserted 3 records into 'employees'.
+[database] Query executed successfully. Rows affected: 13
+Updated Alice's salary.
+[database] Query executed successfully. Rows fetched: 13
+Updated Record for Alice:
+[database] Query executed successfully. Rows affected: 1
+Deleted record for Bob.
+[database] Query executed successfully. Rows fetched: 26
+Employees Table After Deletion:
+[database] Connection closed.
+Closed the database connection.
 ```
 
 *Note: The "Hello" message will continue to print every 5 seconds until the program is terminated.*
@@ -268,7 +360,7 @@ Filtered Data Instances (age > 30): 14
    Takes the list of tokens produced by the Lexer and organizes them into an abstract syntax tree (AST). The AST is a structured representation of the code that reflects the logical grouping of expressions, statements, and control flow constructs. The Parser enforces the grammar of the language, such as the rules for loops, functions, and expressions. If it encounters invalid syntax, it reports errors with precise locations in the source code.
 
 6. **Interpreter.java**:  
-   Executes the AST produced by the Parser. Traverses the tree and evaluates nodes based on their type, handling variable assignments, arithmetic, functions, loops, and other constructs. Implements the language's unique features, such as encrypted variables (`@ENC`) and temporal triggers (`@EVENT_TRIGGER`). Integrates with external libraries for machine learning, blockchain, and data science operations. Maintains a runtime environment that includes variables, functions, and a call stack to support recursive function calls. Manages a time scheduler for event-driven programming.
+   Executes the AST produced by the Parser. Traverses the tree and evaluates nodes based on their type, handling variable assignments, arithmetic, functions, loops, and other constructs. Implements the language's unique features, such as encrypted variables (`@ENC`) and temporal triggers (`@EVENT_TRIGGER`). Integrates with external libraries for machine learning, blockchain, data science, and **database operations**. Maintains a runtime environment that includes variables, functions, and a call stack to support recursive function calls. Manages a time scheduler for event-driven programming.
 
 7. **Libraries**:
    - **MlLibrary.java**:  
@@ -279,15 +371,19 @@ Filtered Data Instances (age > 30): 14
    
    - **DataScienceLibrary.java**:  
      Offers data manipulation and statistical analysis tools, such as loading CSV files, calculating statistical measures, generating visualizations, and filtering datasets.
+   
+   - **DatabaseLibrary.java**:  
+     Enables interaction with SQL databases. Provides methods to connect to a database, execute SQL queries, retrieve results, and close the connection. Supports operations like creating tables, inserting records, updating data, deleting records, and fetching data.
 
 8. **example.txt**:  
-   Serves as the input program written in the custom language. Demonstrates various features, including variable assignments, arithmetic operations, control flow, functions, encrypted variables, machine learning tasks, blockchain operations, data science manipulations, and temporal event triggers. Acts as both a test case and a showcase of the language's capabilities.
+   Serves as the input program written in the custom language. Demonstrates various features, including variable assignments, arithmetic operations, control flow, functions, encrypted variables, machine learning tasks, blockchain operations, data science manipulations, **database interactions**, and temporal event triggers. Acts as both a test case and a showcase of the language's capabilities.
 
 9. **Dependencies**:
    - **Weka**: For machine learning functionalities.
    - **JFreeChart**: For generating visualizations like histograms and scatter plots.
    - **Apache Commons Math**: For statistical calculations.
    - **Java Cryptography Extension (JCE)**: For encryption and decryption of variables.
+   - **JDBC Driver**: For database connectivity (e.g., MySQL Connector/J for MySQL databases).
 
 ---
 
@@ -298,7 +394,8 @@ Filtered Data Instances (age > 30): 14
 - **External Libraries**:
   - **Weka**: Download the Weka library JAR file and place it in the `lib/` directory.
   - **JFreeChart**: Download the JFreeChart library JAR files and place them in the `lib/` directory.
-  - **Apache Commons Math**: Download the Commons Math library JAR file and place it in the `lib/` directory.
+  - **Apache Commons Math**: Download the Commons Math library JAR file and place them in the `lib/` directory.
+  - **JDBC Driver**: Download the JDBC driver for your database (e.g., [MySQL Connector/J](https://dev.mysql.com/downloads/connector/j/)) and place it in the `lib/` directory.
 
 ### Steps
 1. **Clone the Repository**:
@@ -313,6 +410,7 @@ Filtered Data Instances (age > 30): 14
      - **Weka**: [Download Weka](https://www.cs.waikato.ac.nz/ml/weka/downloading.html)
      - **JFreeChart**: [Download JFreeChart](https://www.jfree.org/jfreechart/download.html)
      - **Apache Commons Math**: [Download Commons Math](https://commons.apache.org/proper/commons-math/download_math.cgi)
+     - **JDBC Driver**: For example, [Download MySQL Connector/J](https://dev.mysql.com/downloads/connector/j/)
 
 3. **Create Your Input File (`example.txt`)**:
    - Place your program code in the `example.txt` file located in the project root. Refer to the **Example Input File** section above for guidance.
@@ -371,6 +469,11 @@ You can extend this language by:
    - Add support for more complex data structures.
    - Extend the temporal programming capabilities with more scheduling options.
 
+4. **Expanding Database Functionality**:
+   - Support additional database operations and SQL dialects.
+   - Implement connection pooling for better performance.
+   - Add support for transactions and error recovery.
+
 ---
 
 ## Example Enhancements
@@ -414,6 +517,39 @@ filteredData = data_science.filterData(dataset, "age", ">", 30);
 print->"Filtered Data Instances (age > 30): " + filteredData.numInstances();
 ```
 
+### Add Database Operations:
+Support constructs like:
+```plaintext
+use database;
+
+// Connect to the Database
+db.connect("jdbc:mysql://localhost:3306/supermarket", "root", "0000");
+print->"Connected to the database.";
+
+// Create a Table
+createTableQuery = "CREATE TABLE IF NOT EXISTS products ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "name VARCHAR(100) NOT NULL, "
+                + "price DOUBLE, "
+                + "quantity INT)";
+db.query(createTableQuery);
+print->"Checked/Created table 'products'.";
+
+// Insert a Record
+insertProduct = "INSERT INTO products (name, price, quantity) VALUES ('Laptop', 1200.00, 50)";
+db.query(insertProduct);
+print->"Inserted a new product into 'products'.";
+
+// Query Records
+selectProducts = "SELECT * FROM products";
+products = db.query(selectProducts);
+print->"Products Table:";
+
+// Close the Database Connection
+db.close();
+print->"Closed the database connection.";
+```
+
 ### Add Advanced Encryption Features:
 Support more encryption algorithms or key management systems.
 
@@ -431,6 +567,7 @@ Support more encryption algorithms or key management systems.
 - [x] Incorporate Data Science operations and visualizations.
 - [x] Add Encryption support for variables.
 - [x] Implement Temporal Programming with event triggers.
+- [x] **Integrate Database Operations**.
 
 ### Future Enhancements:
 - **Advanced Data Structures**: Support for objects, maps, and more complex data types.
@@ -439,6 +576,7 @@ Support more encryption algorithms or key management systems.
 - **Extended ML Models**: Add more machine learning models and evaluation metrics.
 - **Persistent Storage**: Allow saving and loading of interpreter state.
 - **Enhanced Security**: Implement more robust encryption and security features.
+- **Advanced Database Features**: Support transactions, connection pooling, and additional SQL dialects.
 
 ---
 
@@ -485,7 +623,7 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 - Inspired by the concepts of lexing, parsing, and interpreting as used in compiler design.
 - Developed using Java for its robust features and cross-platform support.
-- Utilizes powerful libraries like **Weka**, **JFreeChart**, and **Apache Commons Math** for extended functionalities.
+- Utilizes powerful libraries like **Weka**, **JFreeChart**, **Apache Commons Math**, and **JDBC Drivers** for extended functionalities.
 - Special thanks to the open-source community for providing invaluable resources and tools.
 
 ---
