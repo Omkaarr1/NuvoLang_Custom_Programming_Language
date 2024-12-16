@@ -1,5 +1,6 @@
 use blockchain;
 use data_science;
+use ml;
 // Variable Assignments and Arithmetic Operations
 x = 10;
 x = x + 5;
@@ -26,6 +27,9 @@ function add(a, b) {
 
 result = add(10, 20);
 print->"Result of add function = " + result;
+
+rfModel = ml.randomforest("scripts/data.csv", "class");
+print->"Random Forest Model: " + rfModel;
 
 // Blockchain Operations
 blockchain.init("myPrivateKey", 1000);
