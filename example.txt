@@ -1,5 +1,6 @@
 use ml;
 use blockchain;
+
 // Variable assignments and arithmetic
 x = 10;
 x = x + 5;
@@ -55,11 +56,9 @@ radius = 5;
 area = pi * radius * radius;
 print->"Area of the circle: " + area;
 
-
 // Encrypted variable assignment
 @ENCpassword = "mySecretPassword";
 print->"Encrypted password: " + @ENCpassword;
-
 
 // Encrypted numerical variable
 @ENCsecretNumber = 42;
@@ -73,17 +72,20 @@ print->"Result after computation: " + result;
 print->"Encrypted secret number after computation: " + @ENCsecretNumber;
 
 // Time-based triggers (will print "Hello" every 5 seconds)
-// @EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
+//@EVENT_TRIGGER(5,"seconds") -> print->"Hello from time-based event!";
 
-// Time-based triggers (runs "Hello" every 5 seconds for 10 times)
- //@EVENT_TRIGGER(1,"seconds",2) -> print->"Hello from time-based event!";
+// Time-based triggers (runs "Hello" every 1 second for 2 times)
+//@EVENT_TRIGGER(1,"seconds",2) -> print->"Hello from limited time-based event!";
+
 // One-time future event trigger example (replace with a future date/time as desired)
 // Format: YYYY-MM-DD HH:MM:SS
 //@EVENT_TRIGGER("2024-12-14 12:18:00") -> print->"Happy New Year!";
 
+// ML Operations
 ml.randomforest("data.csv");
-//ml.kmeans("data.csv");
+// ml.kmeans("data.csv");
 
+// Blockchain Operations
 blockchain.init("MySuperSecretKey", 500);
 print->"Blockchain wallet initialized!";
 
@@ -92,3 +94,9 @@ blockchain.transaction("abcdef1234567890", 200);
 
 // Attempt a transaction with insufficient funds (should fail)
 blockchain.transaction("abcdef1234567890", 600);
+
+// Show current balance
+blockchain.showCurrentBalance();
+
+// Show transaction history
+blockchain.showTransactionHistory();

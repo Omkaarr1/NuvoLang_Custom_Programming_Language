@@ -453,6 +453,18 @@ private Object callObjectMethod(Object target, String methodName, List<Object> a
                 } else {
                     throw new RuntimeException("Invalid arguments for blockchain.transaction");
                 }
+            case "showCurrentBalance":
+                if (args.size() == 0) {
+                    return bc.showCurrentBalance();
+                } else {
+                    throw new RuntimeException("showCurrentBalance does not take any arguments.");
+                }
+            case "showTransactionHistory":
+                if (args.size() == 0) {
+                    return bc.showTransactionHistory();
+                } else {
+                    throw new RuntimeException("showTransactionHistory does not take any arguments.");
+                }
             default:
                 throw new RuntimeException("Unknown method " + methodName + " on blockchain object");
         }
@@ -959,6 +971,26 @@ class BlockchainLibrary {
     private String privateKey;
     private double balance;
     private String fromAddress;
+    private List<Transaction> transactionHistory; // List to store transaction history
+
+    // Inner class to represent a transaction
+    private class Transaction {
+        String toAddress;
+        double amount;
+        String transactionID;
+        int hashCode;
+
+        Transaction(String toAddress, double amount) {
+            this.toAddress = toAddress;
+            this.amount = amount;
+            this.transactionID = java.util.UUID.randomUUID().toString();
+            this.hashCode = (fromAddress + toAddress + amount + transactionID).hashCode();
+        }
+    }
+
+    public BlockchainLibrary() {
+        this.transactionHistory = new ArrayList<>();
+    }
 
     public Object init(String privateKey, double amount) {
         this.privateKey = privateKey;
@@ -976,15 +1008,40 @@ class BlockchainLibrary {
             return null;
         }
         balance -= amount;
-        String transactionID = java.util.UUID.randomUUID().toString();
-        int hashCode = (fromAddress + toAddress + amount + transactionID).hashCode();
+        Transaction tx = new Transaction(toAddress, amount);
+        transactionHistory.add(tx);
 
         System.out.println("[blockchain] Transaction successful!");
-        System.out.println("    hashCode: " + hashCode);
-        System.out.println("    transactionID: " + transactionID);
-        System.out.println("    amount: " + amount);
-        System.out.println("    to Address: " + toAddress);
+        System.out.println("    hashCode: " + tx.hashCode);
+        System.out.println("    transactionID: " + tx.transactionID);
+        System.out.println("    amount: " + tx.amount);
+        System.out.println("    to Address: " + tx.toAddress);
 
         return null;
+    }
+
+    // New method to show current balance
+    public Object showCurrentBalance() {
+        System.out.println("[blockchain] Current Balance: " + balance);
+        return balance;
+    }
+
+    // New method to show transaction history
+    public Object showTransactionHistory() {
+        if (transactionHistory.isEmpty()) {
+            System.out.println("[blockchain] No transactions found.");
+            return null;
+        }
+
+        System.out.println("[blockchain] Transaction History:");
+        for (int i = 0; i < transactionHistory.size(); i++) {
+            Transaction tx = transactionHistory.get(i);
+            System.out.println("  Transaction " + (i + 1) + ":");
+            System.out.println("    To Address: " + tx.toAddress);
+            System.out.println("    Amount: " + tx.amount);
+            System.out.println("    Transaction ID: " + tx.transactionID);
+            System.out.println("    Hash Code: " + tx.hashCode);
+        }
+        return transactionHistory;
     }
 }
