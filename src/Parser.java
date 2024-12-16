@@ -196,6 +196,32 @@ class ObjectMethodCallNode extends Node {
     }
 }
 
+// Represents an array indexing operation, e.g., employees[i]
+class IndexNode extends Node {
+    Node target;    // The array or list being indexed
+    Node index;     // The index expression
+
+    IndexNode(Node target, Node index) {
+        this.target = target;
+        this.index = index;
+    }
+}
+
+// Represents an assignment to an array element, e.g., employees[i] = value;
+class AssignIndexNode extends Node {
+    Node target;    // The array or list being indexed
+    Node index;     // The index expression
+    TokenType op;   // The assignment operator (e.g., ASSIGN, PLUS_EQ)
+    Node value;     // The value to assign
+
+    AssignIndexNode(Node target, Node index, TokenType op, Node value) {
+        this.target = target;
+        this.index = index;
+        this.op = op;
+        this.value = value;
+    }
+}
+
 public class Parser {
     private final List<Token> tokens;
     private int current = 0;
@@ -300,8 +326,8 @@ public class Parser {
 
         Node expr = parseExpression();
 
-        // Handle standalone function calls or method calls without being part of an assignment
-        if (expr instanceof FunctionCallNode || expr instanceof ObjectMethodCallNode) {
+        // Handle standalone function calls, method calls, or indexing without being part of an assignment
+        if (expr instanceof FunctionCallNode || expr instanceof ObjectMethodCallNode || expr instanceof IndexNode) {
             consume(TokenType.SEMICOLON, "Expect ';' after expression.");
             return new ExpressionStatement(expr);
         }
@@ -457,8 +483,13 @@ public class Parser {
         if (match(TokenType.ASSIGN, TokenType.PLUS_EQ, TokenType.MINUS_EQ, TokenType.STAR_EQ, TokenType.SLASH_EQ)) {
             Token op = previous();
             Node right = parseAssignment();
+
             if (left instanceof VariableNode) {
                 return new AssignNode(((VariableNode) left).name, op.type, right);
+            } else if (left instanceof IndexNode) {
+                // Handle assignment to array elements, e.g., employees[i] = value;
+                IndexNode indexNode = (IndexNode) left;
+                return new AssignIndexNode(indexNode.target, indexNode.index, op.type, right);
             } else {
                 throw error(op, "Invalid assignment target.");
             }
@@ -566,7 +597,7 @@ public class Parser {
             String identifier = previous().lexeme;
             Node expr = new VariableNode(identifier);
 
-            // Handle function calls or method calls
+            // Handle function calls, method calls, and array indexing
             while (true) {
                 if (match(TokenType.LPAREN)) {
                     // Function call
@@ -591,6 +622,11 @@ public class Parser {
                     }
                     consume(TokenType.RPAREN, "Expect ')' after method arguments.");
                     expr = new ObjectMethodCallNode(expr, methodName, args);
+                } else if (match(TokenType.LBRACKET)) {
+                    // Array indexing
+                    Node indexExpr = parseExpression();
+                    consume(TokenType.RBRACKET, "Expect ']' after index expression.");
+                    expr = new IndexNode(expr, indexExpr);
                 } else {
                     break;
                 }

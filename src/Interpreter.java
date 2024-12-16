@@ -8,6 +8,7 @@ import javax.crypto.spec.IvParameterSpec;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
+import java.sql.*;
 
 import weka.core.Instances;
 import weka.core.Attribute;
@@ -223,7 +224,8 @@ public class Interpreter {
     private Object evaluate(Node node) {
         return evaluate(node, true);
     }
-
+    
+    @SuppressWarnings("unchecked")
     private Object evaluate(Node node, boolean decrypt) {
         if (node instanceof LiteralNode) {
             return ((LiteralNode) node).value;
@@ -293,6 +295,54 @@ public class Interpreter {
                     return newVal;
                 }
             }
+        } else if (node instanceof AssignIndexNode) {
+            AssignIndexNode assignIndex = (AssignIndexNode) node;
+            Object target = evaluate(assignIndex.target, decrypt);
+            Object indexObj = evaluate(assignIndex.index, decrypt);
+
+            // Ensure the target is a list
+            if (!(target instanceof List<?>)) {
+                throw new RuntimeException("Target of indexing is not a list.");
+            }
+            List<Object> list = (List<Object>) target;
+
+            // Convert index to integer
+            int index = toInteger(indexObj);
+            if (index < 0 || index >= list.size()) {
+                throw new RuntimeException("Index out of bounds: " + index);
+            }
+
+            // Evaluate the value to assign
+            Object value = evaluate(assignIndex.value, decrypt);
+
+            // Handle compound assignment operators
+            if (assignIndex.op != TokenType.ASSIGN) {
+                Object currentVal = list.get(index);
+                Object newVal = applyOp(currentVal, value, operatorFromCompound(assignIndex.op));
+                list.set(index, newVal);
+                return newVal;
+            } else {
+                list.set(index, value);
+                return value;
+            }
+        } else if (node instanceof IndexNode) {
+            IndexNode indexNode = (IndexNode) node;
+            Object target = evaluate(indexNode.target, decrypt);
+            Object indexObj = evaluate(indexNode.index, decrypt);
+
+            // Ensure the target is a list
+            if (!(target instanceof List<?>)) {
+                throw new RuntimeException("Target of indexing is not a list.");
+            }
+            List<Object> list = (List<Object>) target; // Unchecked cast
+
+            // Convert index to integer
+            int index = toInteger(indexObj);
+            if (index < 0 || index >= list.size()) {
+                throw new RuntimeException("Index out of bounds: " + index);
+            }
+
+            return list.get(index);
         } else if (node instanceof BinaryNode) {
             Object left = evaluate(((BinaryNode) node).left, decrypt);
             Object right = evaluate(((BinaryNode) node).right, decrypt);
@@ -411,6 +461,29 @@ public class Interpreter {
         throw new RuntimeException("Unknown node type: " + node.getClass().getName());
     }
 
+    /**
+     * Converts an Object to an integer. Supports Integer, Double, and String
+     * representations.
+     *
+     * @param obj The object to convert.
+     * @return The integer value.
+     */
+    private int toInteger(Object obj) {
+        if (obj instanceof Integer) {
+            return (Integer) obj;
+        } else if (obj instanceof Double) {
+            return ((Double) obj).intValue();
+        } else if (obj instanceof String) {
+            try {
+                return Integer.parseInt((String) obj);
+            } catch (NumberFormatException e) {
+                throw new RuntimeException("Cannot convert to integer: " + obj);
+            }
+        } else {
+            throw new RuntimeException("Cannot convert to integer: " + obj);
+        }
+    }
+
     private void loadLibrary(String name) {
         if (name.equals("ml")) {
             setVariable("ml", new MlLibrary(), false);
@@ -418,6 +491,8 @@ public class Interpreter {
             setVariable("blockchain", new BlockchainLibrary(), false);
         } else if (name.equals("data_science") || name.equals("data science")) { // Handle different naming conventions
             setVariable("data_science", new DataScienceLibrary(), false);
+        } else if (name.equals("database")) {
+            setVariable("db", new DatabaseLibrary(), false);
         } else {
             throw new RuntimeException("Unknown library: " + name);
         }
@@ -425,6 +500,14 @@ public class Interpreter {
 
     // Interpreter.java
 
+    /**
+     * Calls a method on an object from a loaded library or other supported objects.
+     *
+     * @param target     The target object.
+     * @param methodName The method name to call.
+     * @param args       The arguments to pass to the method.
+     * @return The result of the method call.
+     */
     @SuppressWarnings("unchecked")
     private Object callObjectMethod(Object target, String methodName, List<Object> args) {
         if (target instanceof MlLibrary) {
@@ -554,8 +637,60 @@ public class Interpreter {
                 default:
                     throw new RuntimeException("Unknown method " + methodName + " on Instances object.");
             }
+        } else if (target instanceof List) { // Updated condition to use raw List
+            List<?> list = (List<?>) target;
+            switch (methodName) {
+                case "numInstances":
+                    if (args.size() == 0) {
+                        return list.size();
+                    } else {
+                        throw new RuntimeException("numInstances method does not take any arguments.");
+                    }
+                case "add":
+                    if (args.size() == 1) {
+                        ((List<Object>) list).add(args.get(0));
+                        return null;
+                    } else {
+                        throw new RuntimeException("add method expects exactly one argument.");
+                    }
+                case "remove":
+                    if (args.size() == 1 && args.get(0) instanceof Integer) {
+                        ((List<Object>) list).remove((Integer) args.get(0));
+                        return null;
+                    } else {
+                        throw new RuntimeException("remove method expects exactly one integer argument.");
+                    }
+                    // Add more List methods as needed
+                default:
+                    throw new RuntimeException("Unknown method '" + methodName + "' on List object.");
+            }
+        } else if (target instanceof DatabaseLibrary) {
+            DatabaseLibrary db = (DatabaseLibrary) target;
+            switch (methodName) {
+                case "connect":
+                    if (args.size() == 3 && args.get(0) instanceof String && args.get(1) instanceof String
+                            && args.get(2) instanceof String) {
+                        return db.connect((String) args.get(0), (String) args.get(1), (String) args.get(2));
+                    } else {
+                        throw new RuntimeException(
+                                "Invalid arguments for db.connect. Expected (String url, String user, String password).");
+                    }
+                case "query":
+                    if (args.size() == 1 && args.get(0) instanceof String) {
+                        return db.query((String) args.get(0));
+                    } else {
+                        throw new RuntimeException("Invalid arguments for db.query. Expected (String sql).");
+                    }
+                case "close":
+                    if (args.size() == 0) {
+                        return db.close();
+                    } else {
+                        throw new RuntimeException("close method does not take any arguments.");
+                    }
+                default:
+                    throw new RuntimeException("Unknown method '" + methodName + "' on db object.");
+            }
         }
-
         throw new RuntimeException("Unknown method " + methodName + " on object " + target);
     }
 
@@ -1448,4 +1583,89 @@ class DataScienceLibrary {
 
     // Additional data manipulation and statistical analysis methods can be added
     // here
+}
+
+class DatabaseLibrary {
+    private Connection connection;
+
+    /**
+     * Connects to the specified database using JDBC.
+     *
+     * @param url      The JDBC URL of the database.
+     * @param user     The database username.
+     * @param password The database password.
+     * @return null
+     */
+    public Object connect(String url, String user, String password) {
+        try {
+            // Load the JDBC driver (e.g., MySQL)
+            // Ensure the JDBC driver is in the classpath
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // Establish the connection
+            connection = DriverManager.getConnection(url, user, password);
+            System.out.println("[database] Connected to database successfully.");
+            return null;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("[database] JDBC Driver not found: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new RuntimeException("[database] Failed to connect to database: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Executes the given SQL query and returns the results.
+     *
+     * @param sql The SQL query to execute.
+     * @return A list of maps representing the result set rows.
+     */
+    public Object query(String sql) {
+        if (connection == null) {
+            throw new RuntimeException("[database] Not connected to any database. Call db.connect() first.");
+        }
+        try (Statement stmt = connection.createStatement()) {
+            boolean hasResultSet = stmt.execute(sql);
+            if (hasResultSet) {
+                ResultSet rs = stmt.getResultSet();
+                List<Map<String, Object>> results = new ArrayList<>();
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.put(meta.getColumnName(i), rs.getObject(i));
+                    }
+                    results.add(row);
+                }
+                System.out.println("[database] Query executed successfully. Rows fetched: " + results.size());
+                return results;
+            } else {
+                int updateCount = stmt.getUpdateCount();
+                System.out.println("[database] Query executed successfully. Rows affected: " + updateCount);
+                return updateCount;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("[database] Query execution failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Closes the database connection.
+     *
+     * @return null
+     */
+    public Object close() {
+        if (connection != null) {
+            try {
+                connection.close();
+                System.out.println("[database] Connection closed.");
+                connection = null;
+            } catch (SQLException e) {
+                throw new RuntimeException("[database] Failed to close connection: " + e.getMessage(), e);
+            }
+        } else {
+            System.out.println("[database] No active connection to close.");
+        }
+        return null;
+    }
 }
