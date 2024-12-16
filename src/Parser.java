@@ -204,6 +204,8 @@ public class Parser {
         this.tokens = tokens;
     }
 
+    // Helper Methods
+
     private Token peek() {
         return tokens.get(current);
     }
@@ -248,6 +250,8 @@ public class Parser {
     private RuntimeException error(Token token, String message) {
         return new RuntimeException("Parse Error at " + token.line + ":" + token.column + " - " + message);
     }
+
+    // Parsing Methods
 
     public List<Node> parse() {
         List<Node> statements = new ArrayList<>();
@@ -295,6 +299,13 @@ public class Parser {
         }
 
         Node expr = parseExpression();
+
+        // Handle standalone function calls or method calls without being part of an assignment
+        if (expr instanceof FunctionCallNode || expr instanceof ObjectMethodCallNode) {
+            consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+            return new ExpressionStatement(expr);
+        }
+
         consume(TokenType.SEMICOLON, "Expect ';' after expression.");
         return new ExpressionStatement(expr);
     }
@@ -322,7 +333,12 @@ public class Parser {
         consume(TokenType.LBRACE, "Expect '{' to start function body.");
         List<Node> body = parseBlock();
         consume(TokenType.RBRACE, "Expect '}' after function body.");
-        consume(TokenType.SEMICOLON, "Expect ';' after function definition.");
+
+        // Optional semicolon after function definition
+        if (match(TokenType.SEMICOLON)) {
+            // Optional semicolon consumed
+        }
+
         return new FunctionDefNode(name, parameters, body);
     }
 
@@ -363,9 +379,11 @@ public class Parser {
         consume(TokenType.LPAREN, "Expect '(' after 'if'.");
         Node condition = parseExpression();
         consume(TokenType.RPAREN, "Expect ')' after if condition.");
+
         consume(TokenType.LBRACE, "Expect '{' to start 'if' branch.");
         List<Node> ifBranch = parseBlock();
         consume(TokenType.RBRACE, "Expect '}' after 'if' branch.");
+
         List<Node> elseBranch = null;
         if (match(TokenType.ELSE)) {
             consume(TokenType.LBRACE, "Expect '{' to start 'else' branch.");
@@ -392,7 +410,7 @@ public class Parser {
     }
 
     private Node parseEventTrigger() {
-        // @EVENT_TRIGGER(duration,"seconds",times) -> statement;
+        // @EVENT_TRIGGER(duration,"seconds") -> statement;
         // @EVENT_TRIGGER("YYYY-MM-DD HH:MM:SS") -> statement;
 
         consume(TokenType.LPAREN, "Expect '(' after @EVENT_TRIGGER.");
@@ -417,6 +435,7 @@ public class Parser {
         consume(TokenType.ARROW, "Expect '->' after event trigger declaration.");
 
         Node action = parseStatement();
+
         return new EventTriggerNode(timeNode, unit, action, timesNode);
     }
 
@@ -544,20 +563,37 @@ public class Parser {
         }
 
         if (match(TokenType.IDENTIFIER)) {
-            Node expr = new VariableNode(previous().lexeme);
+            String identifier = previous().lexeme;
+            Node expr = new VariableNode(identifier);
 
-            // Support for property access and method calls: e.g., ml.randomforest(...)
-            while (match(TokenType.DOT)) {
-                Token methodName = consume(TokenType.IDENTIFIER, "Expect method name after '.'");
-                consume(TokenType.LPAREN, "Expect '(' after method name.");
-                List<Node> args = new ArrayList<>();
-                if (!check(TokenType.RPAREN)) {
-                    do {
-                        args.add(parseExpression());
-                    } while (match(TokenType.COMMA));
+            // Handle function calls or method calls
+            while (true) {
+                if (match(TokenType.LPAREN)) {
+                    // Function call
+                    List<Node> args = new ArrayList<>();
+                    if (!check(TokenType.RPAREN)) {
+                        do {
+                            args.add(parseExpression());
+                        } while (match(TokenType.COMMA));
+                    }
+                    consume(TokenType.RPAREN, "Expect ')' after function arguments.");
+                    expr = new FunctionCallNode(identifier, args);
+                } else if (match(TokenType.DOT)) {
+                    // Method call
+                    Token methodNameToken = consume(TokenType.IDENTIFIER, "Expect method name after '.'");
+                    String methodName = methodNameToken.lexeme;
+                    consume(TokenType.LPAREN, "Expect '(' after method name.");
+                    List<Node> args = new ArrayList<>();
+                    if (!check(TokenType.RPAREN)) {
+                        do {
+                            args.add(parseExpression());
+                        } while (match(TokenType.COMMA));
+                    }
+                    consume(TokenType.RPAREN, "Expect ')' after method arguments.");
+                    expr = new ObjectMethodCallNode(expr, methodName, args);
+                } else {
+                    break;
                 }
-                consume(TokenType.RPAREN, "Expect ')' after arguments.");
-                expr = new ObjectMethodCallNode(expr, methodName.lexeme, args);
             }
 
             return expr;
