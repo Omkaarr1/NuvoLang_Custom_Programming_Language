@@ -1,4 +1,4 @@
-### Security Policy for Custom Programming Language Interpreter
+# Security Policy for Custom Programming Language Interpreter
 
 #### Purpose
 This document outlines the security policies for the Custom Programming Language Interpreter project to ensure the protection of sensitive data, prevention of unauthorized access, and the secure execution of programs.
