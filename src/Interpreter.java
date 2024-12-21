@@ -1619,30 +1619,36 @@ class DatabaseLibrary {
      * @param sql The SQL query to execute.
      * @return A list of maps representing the result set rows.
      */
+    // Updated function in DatabaseLibrary class
     public Object query(String sql) {
         if (connection == null) {
             throw new RuntimeException("[database] Not connected to any database. Call db.connect() first.");
         }
-        try (Statement stmt = connection.createStatement()) {
+        try (Statement stmt = connection.createStatement(
+                ResultSet.TYPE_SCROLL_INSENSITIVE,
+                ResultSet.CONCUR_READ_ONLY)) {
             boolean hasResultSet = stmt.execute(sql);
             if (hasResultSet) {
-                ResultSet rs = stmt.getResultSet();
-                List<Map<String, Object>> results = new ArrayList<>();
-                ResultSetMetaData meta = rs.getMetaData();
-                int columnCount = meta.getColumnCount();
-                while (rs.next()) {
-                    Map<String, Object> row = new HashMap<>();
-                    for (int i = 1; i <= columnCount; i++) {
-                        row.put(meta.getColumnName(i), rs.getObject(i));
+                try (ResultSet rs = stmt.getResultSet()) {
+                    List<Map<String, Object>> results = new ArrayList<>();
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int columnCount = meta.getColumnCount();
+
+                    while (rs.next()) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        for (int i = 1; i <= columnCount; i++) {
+                            row.put(meta.getColumnName(i), rs.getObject(i));
+                        }
+                        results.add(row);
                     }
-                    results.add(row);
+
+                    System.out.println("[database] Query executed successfully. Rows fetched: " + results.size());
+                    return results; // Returning the list of rows
                 }
-                System.out.println("[database] Query executed successfully. Rows fetched: " + results.size());
-                return results;
             } else {
                 int updateCount = stmt.getUpdateCount();
                 System.out.println("[database] Query executed successfully. Rows affected: " + updateCount);
-                return updateCount;
+                return updateCount; // Returning the number of rows affected
             }
         } catch (SQLException e) {
             throw new RuntimeException("[database] Query execution failed: " + e.getMessage(), e);

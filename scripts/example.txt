@@ -108,7 +108,7 @@ print->"Deleted record for Bob.";
 // Query After Deletion
 selectAll = "SELECT * FROM employees";
 remainingEmployees = db.query(selectAll);
-print->"Employees Table After Deletion:";
+print->"Employees Table After Deletion:" + remainingEmployees;
 
 // Close the Database Connection
 db.close();
