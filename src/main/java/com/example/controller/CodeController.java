@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,30 +13,25 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.example.lang.Lexer;
+import com.example.lang.Parser;
+import com.example.lang.Token;
+
 @Controller
 public class CodeController {
 
-    // Where the user code is stored temporarily (optional).
-    private static final String SCRIPT_PATH = "scripts/example.txt";
-
-    // Update if your project folder is different.
-    // This should be the directory containing:
-    //  - src\Main.java
-    //  - bin\
-    //  - lib\
-    //  - scripts\example.txt
     private static final String PROJECT_PATH = "C:\\Users\\omkar\\Desktop\\Project 2";
+    private static final String SCRIPT_PATH = "scripts/example.txt";
 
     @GetMapping("/")
     public String showForm(Model model) {
-        // Renders src/main/resources/templates/index.html
-        return "index";
+        return "index"; // Renders src/main/resources/templates/index.html
     }
 
     @PostMapping("/runCode")
     public String runCode(@RequestParam("code") String code, Model model) {
 
-        // 1) Write code to scripts\example.txt (optional step)
+        // Step 1: Save user's code to scripts/example.txt
         File scriptFile = new File(PROJECT_PATH, SCRIPT_PATH);
         try (FileWriter fw = new FileWriter(scriptFile)) {
             fw.write(code);
@@ -44,69 +40,92 @@ public class CodeController {
             return "index";
         }
 
-        // 2) Compile src\Main.java -> bin\src\Main.class
-        //    using the same command you'd do manually in CMD:
-        //    javac -cp "lib/*;bin" -d bin src\Main.java
-        ProcessBuilder compileBuilder = new ProcessBuilder(
-            "cmd.exe", "/c",
-            "javac -cp \"lib/*;bin\" -d bin src\\Main.java"
-        );
-        // Must set working dir so paths match exactly
-        compileBuilder.directory(new File(PROJECT_PATH));
-        compileBuilder.redirectErrorStream(true);
-
-        StringBuilder compileOutput = new StringBuilder();
+        // Step 2: Tokenize and parse the code
+        StringBuilder parseOutput = new StringBuilder();
         try {
-            Process compileProcess = compileBuilder.start();
-            try (BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(compileProcess.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    compileOutput.append(line).append("\n");
-                }
+            Lexer lexer = new Lexer(code);
+            List<Token> tokens = lexer.tokenize();
+
+            Parser parser = new Parser(tokens);
+            String parseResult = parser.getParseResultAsString();
+            
+            parseOutput.append("--- PARSE RESULT ---\n");
+            for (String line : parseResult.split("\n")) {
+                parseOutput.append(formatNode(line)).append("\n"); // Format nodes for better readability
             }
-            int compileExitCode = compileProcess.waitFor();
-            if (compileExitCode != 0) {
-                // Compilation failed
-                model.addAttribute("message", "Compilation failed with exit code " + compileExitCode);
-                model.addAttribute("output", compileOutput.toString());
-                return "index";
-            }
-        } catch (IOException | InterruptedException e) {
-            model.addAttribute("message", "Error compiling: " + e.getMessage());
+        } catch (Exception e) {
+            parseOutput.append("[Parse Error] ").append(e.getMessage()).append("\n");
+        }
+
+        // Step 3: Compile the code
+        String compileCommand = "javac -cp \"lib/*;bin\" -d bin src\\main\\java\\com\\example\\lang\\*.java";
+        StringBuilder compileOutput = executeCommand(compileCommand, "Compilation", PROJECT_PATH);
+        if (compileOutput == null) {
+            model.addAttribute("compileOutput", parseOutput.toString());
             return "index";
         }
 
-        // 3) Run the compiled class
-        //    "java -cp \"lib/*;bin\" src.Main scripts\example.txt"
-        ProcessBuilder runBuilder = new ProcessBuilder(
-            "cmd.exe", "/c",
-            "java -cp \"lib/*;bin\" src.Main scripts\\example.txt"
-        );
-        runBuilder.directory(new File(PROJECT_PATH));
-        runBuilder.redirectErrorStream(true);
+        // Step 4: Run the compiled class
+        String runCommand = "java -cp \"lib/*;bin\" com.example.lang.Main scripts\\example.txt";
+        StringBuilder runOutput = executeCommand(runCommand, "Execution", PROJECT_PATH);
 
-        StringBuilder runOutput = new StringBuilder();
-        try {
-            Process runProcess = runBuilder.start();
-            try (BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(runProcess.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    runOutput.append(line).append("\n");
-                }
-            }
-            int runExitCode = runProcess.waitFor();
-            model.addAttribute("message", "Code executed with exit code " + runExitCode);
-
-        } catch (IOException | InterruptedException e) {
-            model.addAttribute("message", "Error running the command: " + e.getMessage());
-        }
-
-        // 4) Provide compilation output + runtime output to the user
-        model.addAttribute("compileOutput", compileOutput.toString());
-        model.addAttribute("output", runOutput.toString());
+        // Combine outputs and return to the model
+        model.addAttribute("message", "Code executed successfully.");
+        model.addAttribute("compileOutput", parseOutput.toString() + "\n" + compileOutput.toString());
+        model.addAttribute("output", formatRuntimeOutput(runOutput != null ? runOutput.toString() : "No output generated."));
 
         return "index";
     }
+
+    /**
+     * Helper method to execute a system command and capture its output.
+     */
+    private StringBuilder executeCommand(String command, String stage, String directory) {
+        StringBuilder output = new StringBuilder();
+        ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", command);
+        processBuilder.directory(new File(directory));
+        processBuilder.redirectErrorStream(true);
+
+        try {
+            Process process = processBuilder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                output.append(stage).append(" failed with exit code ").append(exitCode).append("\n");
+                return null; // Return null if the process failed
+            }
+        } catch (IOException | InterruptedException e) {
+            output.append(stage).append(" error: ").append(e.getMessage()).append("\n");
+            return null;
+        }
+
+        return output;
+    }
+
+    /**
+     * Formats node output to be more human-readable.
+     */
+    private String formatNode(String node) {
+        if (node.contains("@")) {
+            String[] parts = node.split("@");
+            return parts[0].replace("com.example.lang.", "") + " (ID: " + parts[1] + ")";
+        }
+        return node;
+    }
+    private String formatRuntimeOutput(String output) {
+    StringBuilder formattedOutput = new StringBuilder();
+    String[] lines = output.split("\n");
+    for (String line : lines) {
+        if (!line.trim().isEmpty()) {
+            formattedOutput.append(line.trim()).append("\n");
+        }
+    }
+    return formattedOutput.toString();
 }
+
+}    
