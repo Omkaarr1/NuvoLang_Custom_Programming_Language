@@ -3,8 +3,9 @@ com\example\lang\EventTriggerNode.class
 com\example\lang\IfNode.class
 com\example\lang\InputNode.class
 com\example\lang\UseNode.class
+com\example\demospring\dto\CodeExecutionResponse.class
 com\example\lang\ExpressionStatement.class
-application.properties
+com\example\demospring\DemospringApplication.class
 com\example\lang\LiteralNode.class
 com\example\lang\ObjectMethodCallNode.class
 com\example\lang\MlLibrary.class
@@ -17,7 +18,6 @@ com\example\lang\ArrayLiteralNode.class
 com\example\lang\Interpreter$3.class
 com\example\lang\VariableNode.class
 com\example\lang\WhileNode.class
-templates\index.html
 com\example\lang\Token.class
 com\example\demospring\controller\CodeController.class
 com\example\lang\BlockchainLibrary.class
