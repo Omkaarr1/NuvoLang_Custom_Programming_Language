@@ -1,7 +1,3 @@
-Below is an **updated README** that includes **new AI features** (e.g., “SONAR AI” or a custom AI module) and describes how users can leverage it for **code generation**, **intelligent suggestions**, and **automated problem solving**. Everything from the original text is preserved, with **additional sections** focusing on the AI functionality.
-
----
-
 # Custom Programming Language Interpreter in Java
 
 This project implements a **custom programming language interpreter** in Java, complete with a **lexer**, **parser**, and **interpreter**. It reads program files, tokenizes and parses them, and executes the code line-by-line. The language supports a wide range of features, including variable assignments, arithmetic operations, conditional statements (`if-else`), functions, arrays, encrypted variables, machine learning integrations, blockchain functionalities, data science operations, **database interactions**, and temporal event triggers.
