@@ -212,7 +212,7 @@ use ml;
    - Demo input that uses all key language features: variables, functions, encryption, event triggers, ML, blockchain, data science, database.
 
 8. **AI Integration**  
-   - **(Optional)** If you have the SONAR AI module enabled, you can request code generation or clarifications from the language’s context.
+   - If you have the SONAR AI module enabled, you can request code generation or clarifications from the language’s context.
 
 9. **Dependencies**  
    - **Weka** for ML.  
@@ -252,7 +252,7 @@ use ml;
 
 ---
 
-## AI / SONAR AI Usage (Optional)
+## AI / SONAR AI Usage
 
 - **Requires** an environment or server that can pass user prompts to the AI model (e.g., GPT-4).  
 - If integrated, you can do something like:  
@@ -350,7 +350,7 @@ use ml;
 
 ## License
 
-Licensed under the **MIT License**. See `LICENSE` for details.
+Licensed under the **CC0 1.0 License**. See `LICENSE` for details.
 
 ---
 
