@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Run Code + SONAR AI (No Server, ChatGPT-Style Snippets)</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+  <!-- Animate.css for animations -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* General Page Styles */
+    body {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      position: relative;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 1s ease-in-out;
+      margin-bottom: 80px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #343a40;
+    }
+
+    /* Form Styles */
+    textarea {
+      resize: vertical;
+      border-radius: 5px;
+      border: 1px solid #ced4da;
+      padding: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+      height: 200px;
+    }
+
+    .btn-run {
+      background-color: #007bff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-run:hover {
+      background-color: #0056b3;
+      cursor: pointer;
+    }
+
+    .btn-run i {
+      margin-right: 8px;
+    }
+
+    /* Loader Styles */
+    .loader {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #007bff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Output Section Styles */
+    .output-section {
+      margin-top: 30px;
+      display: none;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    .output-section h3 {
+      color: #495057;
+      margin-top: 20px;
+    }
+
+    pre {
+      background: #f1f3f5;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      max-height: 300px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 0.95rem;
+    }
+
+    /* Responsive Outputs */
+    .outputs {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .outputs {
+        flex-direction: row;
+      }
+
+      .output-box {
+        flex: 1;
+      }
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translate3d(0, 40px, 0);
+      }
+
+      to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Chatbot Button */
+    #chatbotBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 9999;
+    }
+
+    #chatbotBtn:hover {
+      background-color: #0056b3;
+    }
+
+    /* Chat Window */
+    #chatWindow {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 400px;
+      height: 60vh;
+      min-height: 400px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      display: none;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    #chatHeader {
+      position: relative;
+      background-color: #007bff;
+      color: #fff;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    #closeChat {
+      position: absolute;
+      right: 15px;
+      top: 12px;
+      cursor: pointer;
+    }
+
+    #chatBody {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    #chatBody p {
+      margin-bottom: 10px;
+    }
+
+    #chatFooter {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background: #f1f1f1;
+      border-top: 1px solid #ddd;
+    }
+
+    #chatInput {
+      flex: 1;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 1rem;
+    }
+
+    #sendBtn {
+      background-color: #007bff;
+      color: #ffffff;
+      border: none;
+      margin-left: 5px;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    #sendBtn:hover {
+      background-color: #0056b3;
+    }
+
+    /* Styling for Code Blocks in Chat */
+    .code-block-container {
+      position: relative;
+      background: #f1f3f5;
+      border-radius: 6px;
+      margin: 8px 0;
+      padding: 10px;
+    }
+
+    .code-block-container pre {
+      margin: 0 0 10px 0;
+      overflow-x: auto;
+      background: none;
+      border: none;
+      max-height: 300px;
+    }
+
+    .code-block-container .button-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-copy-code,
+    .btn-copy-to-editor {
+      background-color: #e2e3e5;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .btn-copy-code:hover,
+    .btn-copy-to-editor:hover {
+      background-color: #c9cacc;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Run Your Code</h1>
+
+    <!-- Code Input Form -->
+    <form id="codeForm">
+      <div class="mb-4">
+        <label for="code" class="form-label"><strong>Enter your code below:</strong></label>
+        <textarea class="form-control" id="code" name="code" placeholder="Write your code here..." required></textarea>
+      </div>
+      <div class="text-center">
+        <button type="submit" class="btn-run">
+          <i class="fas fa-play"></i> Run Code
+        </button>
+      </div>
+    </form>
+
+    <!-- Loader -->
+    <div class="loader" id="loader"></div>
+
+    <!-- Output Section -->
+    <div class="output-section animate__animated" id="outputSection">
+      <div class="outputs">
+        <div class="output-box">
+          <h3>Compilation Output:</h3>
+          <pre id="compileOutput"></pre>
+        </div>
+        <div class="output-box">
+          <h3>Runtime Output:</h3>
+          <pre id="runtimeOutput"></pre>
+        </div>
+      </div>
+
+      <!-- Go Back to Editor Button -->
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-secondary" id="goBackBtn">
+          <i class="fas fa-arrow-left"></i> Go Back to Editor
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chatbot Button -->
+  <button id="chatbotBtn" title="Chat with SONAR AI">
+    <i class="fas fa-robot fa-lg"></i>
+  </button>
+
+  <!-- Chat Window -->
+  <div id="chatWindow" class="animate__animated animate__fadeInUp">
+    <div id="chatHeader">
+      SONAR AI
+      <span id="closeChat"><i class="fas fa-times"></i></span>
+    </div>
+    <div id="chatBody">
+      <p><strong>Hi there!</strong> I'm <em>SONAR AI</em>. I can help you learn about <strong>NuvoLang</strong> and even
+        generate code snippets for you!</p>
+      <p>How can I help you today?</p>
+    </div>
+    <div id="chatFooter">
+      <input type="text" id="chatInput" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Custom JavaScript -->
+  <script>
+    /***** 1. Hardcoded OpenAI API Key (Demo Only, Not Secure) *****/
+    let key_to_paradise;
+
+    $.ajax({
+      url: "https://run.mocky.io/v3/405de513-81bb-4dc6-8482-3d318f2bcd4f",
+      type: "GET",
+      success: function (result) {
+        key_to_paradise = result;
+        console.log("Fetched Key: ");
+      },
+      error: function (err) {
+        console.error("Error fetching key:", err);
+      }
+    });
+
+    /***** 2. Full prompt template describing your custom language *****/
+    const PROMPT_TEMPLATE = `
+PROMPT_TEMPLATE = """
+You are an expert in a custom programming language with the following features:
+
+1. **Variable Handling**:
+   - Supports basic variable declarations, arithmetic operations, and assignments.
+   - Variables can be encrypted using the "@ENC: prefix (e.g., "@ENCvar = "secret";"").
+
+2. **Control Structures**:
+   - Conditional statements ("if", "else") for decision-making.
+   - Loop constructs ("for", "while") for iterative tasks.
+
+3. **Input/Output**:
+   - "input" for user input with optional prompts.
+   - "print" for output to the console.
+
+4. **Functions**:
+   - User-defined functions with parameters and return values.
+   - Function calls are supported.
+
+5. **Event Scheduling**:
+   - "@EVENT_TRIGGER(duration, unit)"" allows event scheduling in seconds, minutes, or hours.
+   - Supports specific datetime-based scheduling (e.g., "@EVENT_TRIGGER("2024-01-01 12:00:00")"").
+
+6. **Libraries**:
+   - Import libraries using "use <library_name>".
+   - Available libraries include:
+     - database: For database operations like connection, querying, and updates.
+     - blockchain: For blockchain-based transactions and balance management.
+     - ml: For machine learning tasks such as random forest and linear regression.
+     - data_science: For data processing, statistical analysis, and visualization.
+
+7. **Built-in Features**:
+   - **Encryption**: Built-in AES encryption and decryption for sensitive variables. The values are only enceryped and used directly without decryption, it is managed internally. Like if we have two variables @ENCA and @ENCB which are encrypted we can directyl use @ENCA+@ENCB
+   - **Machine Learning**: Functions for model training and evaluation using libraries like Weka.
+   - **Data Science**: Statistical operations (mean, median, standard deviation), data filtering, and visualization (histograms, scatter plots).
+   - **Database Operations**:
+     - Connect, query, update, and delete records in a SQL database.
+     - Create tables and manage data efficiently.
+
+8. **Key Syntax Elements**:
+   - Assignments: x = 10;
+   - Function calls: result = add(10, 20);
+   - Library usage: use ml;
+   - Event triggers: @EVENT_TRIGGER(5, "seconds") -> print->"Hello";
+   - Conditional statements:
+     if (x > 10) { print->"x is large"; } else { print->"x is small"; }
+
+9. **Example Use Cases**:
+   - Encrypt a variable and print the encrypted value.
+   - Trigger an event at a specific time or interval.
+   - Train a machine learning model (e.g., Random Forest) and output results.
+   - Perform SQL queries to manage a database table.
+   - Plot histograms and scatter plots for data visualization.
+
+10. **Execution Workflow**:
+    - The code is tokenized by a "Lexer", parsed into an Abstract Syntax Tree (AST) by a Parser, and executed by an Interpreter.
+    - The "Main" class integrates the components to run scripts stored in text files.
+
+---
+example.txt:
+use database;
+use blockchain;
+use data_science;
+use ml;
+
+// Variable Assignments and Arithmetic Operations
+x = 10;
+x = x + 5;
+print->"Value of x = " + x;
+y = 20;
+y++;
+print->"Value of y after increment = " + y;
+z = x * y;
+print->"Value of z = " + z;
+
+// Conditional Statement
+if (z > 100) { 
+    print->"z is greater than 100"; 
+} else { 
+    print->"z is not greater than 100"; 
+}
+
+//LOOP:
+i = 1;
+for(i=0;i < 11;i++) {    
+    print->i;    
+}
+
+// Encrypted Variable
+@ENCsecret = "mySecretValue";
+print->"Encrypted secret = " + @ENCsecret;
+
+// Event Trigger: Print "Hello" every 5 seconds
+//@EVENT_TRIGGER(5, "seconds") -> print->"Hello";
+
+// Function Definition and Call
+function add(a, b) {
+    return a + b;
+};
+
+result = add(10, 20);
+print->"Result of add function = " + result;
+
+// Machine Learning Operations
+rfModel = ml.randomforest("scripts/data.csv", "class");
+print->"Random Forest Model: " + rfModel;
+
+// Blockchain Operations
+blockchain.init("myPrivateKey", 1000);
+blockchain.transaction("recipientAddress", 250);
+blockchain.showCurrentBalance();
+blockchain.showTransactionHistory();
+
+// Data Science Operations
+dataset = data_science.loadCSV("scripts/data2.csv");
+meanAge = data_science.calculateMean(dataset, "age");
+medianAge = data_science.calculateMedian(dataset, "age");
+stdDevAge = data_science.calculateStdDev(dataset, "age");
+print->"Mean age: " + meanAge;
+print->"Median age: " + medianAge;
+print->"Standard Deviation of age: " + stdDevAge;
+
+// Visualization
+data_science.plotHistogram(dataset, "age", "scripts/age_histogram.png");
+data_science.plotScatter(dataset, "age", "salary", "scripts/age_salary_scatter.png");
+
+// Data Filtering
+filteredData = data_science.filterData(dataset, "age", ">", 30);
+print->"Filtered Data Instances (age > 30): " + filteredData.numInstances();
+
+// -------------------------------------------------
+// Database Operations
+// -------------------------------------------------
+
+// Connect to the Database
+db.connect("jdbc:mysql://localhost:3306/supermarket", "root", "0000");
+print->"Connected to the database.";
+
+// Create a Table (if not exists)
+createTableQuery = "CREATE TABLE IF NOT EXISTS employees ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY, "
+                + "name VARCHAR(100) NOT NULL, "
+                + "age INT, "
+                + "salary DOUBLE)";
+db.query(createTableQuery);
+print->"Checked/Created table 'employees'.";
+
+// Insert Records
+insertQuery1 = "INSERT INTO employees (name, age, salary) VALUES ('Alice', 30, 70000)";
+insertQuery2 = "INSERT INTO employees (name, age, salary) VALUES ('Bob', 25, 50000)";
+insertQuery3 = "INSERT INTO employees (name, age, salary) VALUES ('Charlie', 35, 80000)";
+db.query(insertQuery1);
+db.query(insertQuery2);
+db.query(insertQuery3);
+db.query("SET SQL_SAFE_UPDATES = 0");
+
+print->"Inserted 3 records into 'employees'.";
+
+// Query Records
+updateQuery = "UPDATE employees SET salary = 75000 WHERE name = 'Alice'";
+db.query(updateQuery);
+print->"Updated Alice's salary.";
+
+// Query Updated Record
+selectAlice = "SELECT * FROM employees WHERE name = 'Alice'";
+alice = db.query(selectAlice);
+print->"Updated Record for Alice:";
+
+// Delete a Record
+deleteQuery = "DELETE FROM employees WHERE name = 'Bob'";
+db.query(deleteQuery);
+print->"Deleted record for Bob.";
+
+// Query After Deletion
+selectAll = "SELECT * FROM employees";
+remainingEmployees = db.query(selectAll);
+print->"Employees Table After Deletion:" + remainingEmployees;
+
+// Close the Database Connection
+db.close();
+print->"Closed the database connection.";
+
+### User Requirement:
+Write a program in this language based on the following user specification:
+"""
+`;
+
+    $(document).ready(function () {
+      /************************************************************/
+      /*                (A) CODE RUNNER SECTION                  */
+      /************************************************************/
+      $('#codeForm').on('submit', function (e) {
+        e.preventDefault(); // Prevent default form submission
+
+        // Get the code from the textarea
+        const code = $('#code').val().trim();
+
+        if (code === "") {
+          alert("Please enter your code before submitting.");
+          return;
+        }
+
+        // Show loader and hide form and output section
+        $('#loader').show();
+        $('#codeForm').hide();
+        $('#outputSection').hide();
+
+        // Send AJAX POST request to /runCode
+        $.ajax({
+          url: '/runCode', // Ensure this matches the controller's mapping
+          type: 'POST',
+          data: { code: code },
+          success: function (response) {
+            // Hide loader
+            $('#loader').hide();
+
+            // Update outputs
+            $('#compileOutput').text(response.compileOutput || 'No compilation output.');
+            $('#runtimeOutput').text(response.output || 'No runtime output.');
+
+            // Show output section with animation
+            $('#outputSection').show().addClass('animate__fadeInUp');
+          },
+          error: function (xhr, status, error) {
+            // Hide loader
+            $('#loader').hide();
+
+            // Show form again
+            $('#codeForm').show();
+
+            // Show error message
+            let errorMessage = "An error occurred while running your code.";
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+              errorMessage += " " + xhr.responseJSON.message;
+            }
+            alert(errorMessage);
+            console.error(error);
+          }
+        });
+      });
+
+      // Go Back to Editor button logic
+      $("#goBackBtn").on("click", function () {
+        // Hide the output section and show the form again
+        $("#outputSection").hide();
+        $("#codeForm").show();
+      });
+
+
+      /************************************************************/
+      /*                 (B) SONAR AI CHAT SECTION                */
+      /************************************************************/
+      const chatbotBtn = $("#chatbotBtn");
+      const chatWindow = $("#chatWindow");
+      const closeChat = $("#closeChat");
+      const chatInput = $("#chatInput");
+      const chatBody = $("#chatBody");
+      const sendBtn = $("#sendBtn");
+
+      // Toggle chat window
+      chatbotBtn.on("click", () => chatWindow.toggle());
+      closeChat.on("click", () => chatWindow.hide());
+
+      // Send on click or enter
+      sendBtn.on("click", sendMessage);
+      chatInput.on("keypress", function (e) {
+        if (e.which === 13) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      /**
+       * Send user message, show "thinking", call OpenAI, show result
+       */
+      function sendMessage() {
+        const userMessage = chatInput.val().trim();
+        if (!userMessage) return;
+
+        // Display user's message in chat
+        appendUserMessage(userMessage);
+        chatInput.val("");
+
+        // Show "thinking" message
+        appendThinkingMessage();
+
+        // Build the full prompt for the AI
+        const fullPrompt = PROMPT_TEMPLATE
+          + "\n\n### User Requirement:\n"
+          + userMessage;
+
+        // Make direct call to OpenAI Chat Completion
+        $.ajax({
+          url: "https://api.openai.com/v1/chat/completions",
+          method: "POST",
+          contentType: "application/json",
+          headers: {
+            "Authorization": "Bearer " + key_to_paradise
+          },
+          data: JSON.stringify({
+            model: "gpt-4", // Or "gpt-3.5-turbo" if GPT-4 not available
+            messages: [
+              {
+                role: "system",
+                content: "You are a programming assistant for a custom language interpreter."
+              },
+              {
+                role: "user",
+                content: fullPrompt
+              }
+            ]
+          }),
+          success: function (response) {
+            removeThinkingMessage();
+
+            // Check if AI responded
+            if (response && response.choices && response.choices.length > 0) {
+              const aiMessage = response.choices[0].message.content;
+              // Format code blocks and display
+              appendAiMessage(aiMessage);
+            } else {
+              appendAiMessage("I couldn't fetch a valid response. Please try again.");
+            }
+          },
+          error: function (err) {
+            removeThinkingMessage();
+            appendAiMessage("Error generating code: " + err.responseText);
+            console.error(err);
+          }
+        });
+      }
+
+      /****************** Chat UI Helpers ******************/
+      function appendUserMessage(message) {
+        chatBody.append('<p><strong>You:</strong> ' + escapeHtml(message) + '</p>');
+        scrollChatToBottom();
+      }
+
+      let thinkingMsgId = null;
+      function appendThinkingMessage() {
+        thinkingMsgId = "thinking_" + Date.now();
+        const loaderHtml = `
+          <p id="${thinkingMsgId}">
+            <strong>SONAR AI is generating</strong>
+            <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+          </p>`;
+        chatBody.append(loaderHtml);
+        scrollChatToBottom();
+      }
+      function removeThinkingMessage() {
+        if (thinkingMsgId) {
+          $("#" + thinkingMsgId).remove();
+          thinkingMsgId = null;
+        }
+      }
+
+      function appendAiMessage(rawMessage) {
+        // Process code blocks to wrap them in custom HTML
+        const formattedMessage = transformCodeBlocksInText(rawMessage);
+        // Append AI message
+        chatBody.append('<p><strong>SONAR AI:</strong> ' + formattedMessage + '</p>');
+        scrollChatToBottom();
+
+        // Attach event listeners to newly added copy buttons
+        attachCopyButtons();
+      }
+
+      /**
+       * Transform triple-backtick code fences into code-block containers,
+       * ignoring any leading language label (e.g., "javascript") on the first line.
+       */
+      function transformCodeBlocksInText(text) {
+        const codeBlockRegex = /```([\s\S]*?)```/gs;
+        return text.replace(codeBlockRegex, function (match, codeContent) {
+          // Remove a leading language name if present (e.g., "javascript\n")
+          codeContent = removeLeadingLanguageName(codeContent);
+
+          const safeCode = escapeHtml(codeContent);
+          const containerId = "codeBlockContainer" + Date.now() + Math.floor(Math.random() * 1000);
+          return `
+            <div class="code-block-container" id="${containerId}">
+              <pre>${safeCode}</pre>
+              <div class="button-row">
+                <button class="btn-copy-code">Copy Code</button>
+                <button class="btn-copy-to-editor">Copy to Code Editor</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      /**
+       * If the first line of the code block is a recognized language name, remove it.
+       */
+      function removeLeadingLanguageName(code) {
+        const lines = code.split('\n');
+        // Common language tokens: javascript, c, c++, csharp, python, etc.
+        const languageRegex = /^\s*(javascript|txt|typescript|python|c\+\+|c|csharp|bash|sh|html|css|ruby|go|rust|json|shell|xml|sql|java)\s*$/i;
+        if (lines.length > 1 && languageRegex.test(lines[0])) {
+          lines.shift();
+        }
+        return lines.join('\n');
+      }
+
+      /**
+       * After code-block containers are appended, add event listeners.
+       * "Copy Code" copies code to clipboard.
+       * "Copy to Code Editor" copies code into #code textarea.
+       */
+      function attachCopyButtons() {
+        // Copy Code
+        $(".btn-copy-code").off("click").on("click", function () {
+          const codeBlock = $(this).closest(".code-block-container").find("pre").text();
+          copyToClipboard(codeBlock);
+          alert("Code copied to clipboard!");
+        });
+
+        // Copy to Editor
+        $(".btn-copy-to-editor").off("click").on("click", function () {
+          const codeBlock = $(this).closest(".code-block-container").find("pre").text();
+          $("#code").val(codeBlock);
+          alert("Code copied to the code editor!");
+        });
+      }
+
+      /**
+       * Helper to copy text to clipboard
+       */
+      function copyToClipboard(text) {
+        const tempTextarea = $("<textarea>");
+        $("body").append(tempTextarea);
+        tempTextarea.val(text).select();
+        document.execCommand("copy");
+        tempTextarea.remove();
+      }
+
+      /**
+       * Scroll chat to bottom
+       */
+      function scrollChatToBottom() {
+        chatBody.scrollTop(chatBody[0].scrollHeight);
+      }
+
+      /**
+       * HTML escaping to avoid XSS
+       */
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    });
+  </script>
+</body>
+
+</html>
