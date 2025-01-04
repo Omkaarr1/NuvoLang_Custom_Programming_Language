@@ -25,8 +25,13 @@ import com.example.lang.Token;
 @Controller
 public class CodeController {
 
-    private static final String PROJECT_PATH = "C:\\Users\\omkar\\Desktop\\Project 2";
-    private static final String SCRIPT_PATH = "scripts\\example.txt"; // Ensure correct escaping
+    /**
+     * Dynamically fetch the project's path from the current working directory.
+     * This avoids having a hard-coded path.
+     */
+    private static final String PROJECT_PATH = System.getProperty("user.dir");
+
+    private static final String SCRIPT_PATH = "scripts" + File.separator + "example.txt";
 
     /**
      * Handles GET requests to the root URL and returns the index.html template.
@@ -67,14 +72,17 @@ public class CodeController {
 
             parseOutput.append("--- PARSE RESULT ---\n");
             for (String line : parseResult.split("\n")) {
-                parseOutput.append(formatNode(line)).append("\n"); // Format nodes for better readability
+                parseOutput.append(formatNode(line)).append("\n");
             }
         } catch (Exception e) {
             parseOutput.append("[Parse Error] ").append(e.getMessage()).append("\n");
         }
 
         // Step 3: Compile the code
-        String compileCommand = "javac -cp \"lib/*;bin\" -d bin src\\main\\java\\com\\example\\lang\\*.java";
+        // Adjust commands if necessary (e.g., for OS-specific path separators)
+        String compileCommand = "javac -cp \"lib/*;bin\" -d bin src" + File.separator + "main"
+                + File.separator + "java" + File.separator + "com" + File.separator + "example"
+                + File.separator + "lang" + File.separator + "*.java";
         StringBuilder compileOutput = executeCommand(compileCommand, "Compilation", PROJECT_PATH);
         if (compileOutput == null) {
             response.setMessage("Compilation failed.");
@@ -84,7 +92,7 @@ public class CodeController {
         }
 
         // Step 4: Run the compiled class
-        String runCommand = "java -cp \"lib/*;bin\" com.example.lang.Main scripts\\example.txt";
+        String runCommand = "java -cp \"lib/*;bin\" com.example.lang.Main " + SCRIPT_PATH.replace(File.separator, "/");
         StringBuilder runOutput = executeCommand(runCommand, "Execution", PROJECT_PATH);
 
         // Combine outputs and set in the response
@@ -120,7 +128,7 @@ public class CodeController {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 output.append(stage).append(" failed with exit code ").append(exitCode).append("\n");
-                return null; // Return null if the process failed
+                return null;
             }
         } catch (IOException | InterruptedException e) {
             output.append(stage).append(" error: ").append(e.getMessage()).append("\n");

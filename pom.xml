@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project 
-    xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/POM/4.0.0" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
     xsi:schemaLocation="
         http://maven.apache.org/POM/4.0.0 
         http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
+    <!-- ===========================
+         1. Basic POM Settings
+    ============================ -->
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.example</groupId>
     <artifactId>demospring</artifactId>
@@ -14,71 +17,95 @@
     <description>Demo project for Spring Boot</description>
     <packaging>jar</packaging>
 
+    <!-- ===========================
+         2. Spring Boot Parent
+    ============================ -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.3</version> <!-- or latest -->
-        <relativePath/>
+        <version>3.1.3</version> <!-- Ensure this is the desired version -->
+        <relativePath/> <!-- Lookup parent from repository -->
     </parent>
 
+    <!-- ===========================
+         3. Java + Compiler Properties
+    ============================ -->
     <properties>
-        <java.version>21</java.version> <!-- or 11, etc. -->
+        <java.version>21</java.version> <!-- Set to your desired Java version -->
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
     </properties>
 
+    <!-- ===========================
+         4. Project Dependencies
+    ============================ -->
     <dependencies>
-        <!-- Spring Boot Web Starter -->
+        <!-- Spring Boot Web Starter (includes Tomcat, Jackson, etc.) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Thymeleaf for templates -->
+        <!-- Thymeleaf Template Engine -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
+
+        <!-- JavaParser (3.25.3) -->
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>
             <version>3.25.3</version> 
         </dependency>
-    
-        <!-- (Optional) Lombok -->
+
+        <!-- Lombok (Optional) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- WEKA (machine learning library) -->
+        <!-- WEKA (3.8.0) -->
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>weka-stable</artifactId>
             <version>3.8.0</version>
         </dependency>
 
-        <!-- Commons Math -->
+        <!-- Apache Commons Math (3.6.1) -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
             <version>3.6.1</version>
         </dependency>
 
-        <!-- JFreeChart -->
+        <!-- JFreeChart (1.5.3) -->
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
             <version>1.5.3</version>
         </dependency>
 
+        <!-- Apache Commons Lang (3.12.0) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
     </dependencies>
 
+    <!-- ===========================
+         5. Build Plugins
+    ============================ -->
     <build>
         <plugins>
-            <!-- Spring Boot Maven Plugin -->
+
+            <!-- Spring Boot Maven Plugin: Packages the jar and can run the app -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.1.3</version> <!-- Ensure it matches the parent version -->
                 <executions>
                     <execution>
                         <goals>
@@ -87,6 +114,8 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
+
 </project>

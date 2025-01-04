@@ -1,10 +1,1 @@
-// Variable Assignments and Arithmetic Operations
-x = 1;
-@ENCvar = x;
-
-// Print @ENCvar in a for loop, adding 1 in each iteration
-for(i=0;i<10;i++) {    
-    @ENCvar = @ENCvar + 1;   // Increment @ENCvar by 1
-    print->"Value of Encrypted Variable = " + @ENCvar+" "+ x;
-x = x+1;
-}
+use blockchain;
