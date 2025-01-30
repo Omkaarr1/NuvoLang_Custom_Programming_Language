@@ -14,9 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.example.controller.CodeExecutionRequest;
 import com.example.demospring.dto.CodeExecutionResponse;
 import com.example.lang.Lexer;
 import com.example.lang.Parser;
@@ -47,9 +48,16 @@ public class CodeController {
      */
     @PostMapping("/runCode")
     @ResponseBody
-    public ResponseEntity<CodeExecutionResponse> runCode(@RequestParam("code") String code) {
+    public ResponseEntity<CodeExecutionResponse> runCode(@RequestBody CodeExecutionRequest request) {
         CodeExecutionResponse response = new CodeExecutionResponse();
+        String code = request.getCode();
 
+        // Validate input
+        if (code == null || code.trim().isEmpty()) {
+            response.setMessage("Error: Code input is empty.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+        
         // Step 1: Save user's code to scripts/example.txt
         File scriptFile = new File(PROJECT_PATH, SCRIPT_PATH);
         try (FileWriter fw = new FileWriter(scriptFile)) {
@@ -107,7 +115,8 @@ public class CodeController {
      * Helper method to execute a system command and capture its output.
      *
      * @param command   The command to execute.
-     * @param stage     The stage name (e.g., "Compilation", "Execution") for logging.
+     * @param stage     The stage name (e.g., "Compilation", "Execution") for
+     *                  logging.
      * @param directory The directory to execute the command in.
      * @return The output of the command or null if the command failed.
      */
