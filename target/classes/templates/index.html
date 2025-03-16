@@ -594,7 +594,7 @@ Write a program in this language based on the following user specification:
 
         // Send AJAX POST request to /runCode
         $.ajax({
-          url: 'http://localhost:8080/runCode', // Ensure this matches the controller's mapping
+          url: '/runCode', // Ensure this matches the controller's mapping
           type: 'POST',
           contentType: 'application/json', // Sending JSON data
           data: JSON.stringify({ code: code }), // Convert input to JSON format
